@@ -140,7 +140,7 @@ dt <- dt[-c(1,  ncol(dt))] ## Exclude file name and other useless information
 ### Paramemers setting
 
 label <- "Status"
-split_measure <- 20  ## how many cutoffs points are used in optimization
+split_measure <- 15  ## how many cutoffs points are used in optimization
 max_depth <- 5
 min_instance <- 1
 info_gain <- 0.001
@@ -165,7 +165,9 @@ numEx <- function(dt, num) {
 
 ### stop criteria 4: split will not gain info
 badSplit <- function(sdt1, sdt2, dt) {
-  giniIndex(dt, label) - giniIndex(sdt1, label) - giniIndex(sdt2, label)
+  giniIndex(dt, label) - 
+    nrow(sdt1) / nrow(dt) * giniIndex(sdt1, label) -
+      nrow(sdt2) / nrow(dt) * giniIndex(sdt2, label)
 }
 
 ### create leaf (terminal) node
@@ -178,16 +180,17 @@ leafNode <- function(dt) {
 
 
 
-buildTree <- function(dt, label, min_instance = 1, max_depth = 10, info_gain = 0.001) {
-  #dt <- iris
-  
-  ### Step 0. check stopping criteria
+buildTree <- function(dt, label, min_instance = 1,
+                      max_depth = 10, info_gain = 0.1,
+                      n_now = 1) {
+
+  ### Step 0. check early-stopping criteria
   col_name <<- colnames(dt)
   col_name <<- col_name[-which(col_name == label)]
-  depth <- 1
+  cat("depth is:", n_now, "\n")
   
-  if(numLabels(dt) |
-     #maxDepth(now, max_depth) |
+  if (numLabels(dt) |
+     maxDepth(n_now, max_depth) |
      numEx(dt, min_instance)) {
     cat("E-stop", "\n")
     return(leafNode(dt))
@@ -201,7 +204,7 @@ buildTree <- function(dt, label, min_instance = 1, max_depth = 10, info_gain = 0
     splitres <- matrix(0, nrow = length(col_name), ncol = split_measure)
     out <- NULL
     
-    for(i in seq_along(col_name)) { 
+    for (i in seq_along(col_name)) { 
       
       all_cut <- arrange_(dt, col_name[i]) %>% select_(., col_name[i]) %>% unique  ## get the value of i-th column
       cutoffs <- (all_cut[-1,] + all_cut[-length(all_cut),]) / 2
@@ -226,6 +229,8 @@ buildTree <- function(dt, label, min_instance = 1, max_depth = 10, info_gain = 0
     
     ### Step 3.
     ### check the subset has enough information gain
+    cat(badSplit(divide[[1]], divide[[2]], dt),"\n")
+    
     if (badSplit(divide[[1]], divide[[2]], dt) < info_gain) {
       cat("Bad Split", "\n")
       return(leafNode(dt))
@@ -243,15 +248,24 @@ buildTree <- function(dt, label, min_instance = 1, max_depth = 10, info_gain = 0
     ### Step final + 2
     ### grow the subtree
     
-    #v1 <- res[[3]]
-    #v2 <- res[[4]]
-    v1 <- buildTree(res$L_tree, label, min_instance = 1, max_depth = 10)
-    v2 <- buildTree(res$R_tree, label, min_instance = 1, max_depth = 10)
+    v1 <- buildTree(res$L_tree, label, min_instance = 1, max_depth = 10,
+                     n_now = n_now + 1)
+    v2 <- buildTree(res$R_tree, label, min_instance = 1, max_depth = 10,
+                     n_now = n_now + 1)
     
-    return(c(v1, v2))
+    out <- list(column = col_name[best_col],
+                cutoff = best_cut,
+                depth = n_now,
+                left_tree = v1,
+                right_tree = v2)
+    
+    return(out)
   }
 }
 
-buildTree(dt, label, min_instance = 1, max_depth = 10, info_gain = 0.001)
+
+buildTree(iris, "Species", min_instance = 1, max_depth = 10, info_gain = 0.001)
+
+#buildTree(dt, label, min_instance = 1, max_depth = 10, info_gain = 0.001)
 
 
