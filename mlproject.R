@@ -6,6 +6,8 @@ library(magrittr)
 library(lazyeval)
 data(iris)
 
+setwd("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Parkinsons data\\5 tests")
+
 ###################################################################
 ## Find inf pairs in the data
 ## input: a data set
@@ -88,8 +90,8 @@ giniIndex <- function(dt, label) {
 }
 
 ###################################################################
-## Compute impurity
-## input: cutoff, number of the column and data set
+## Compute impurity/gini index for each group
+## input: cutoff, number of the column and split data
 ## output: impurity
 ###################################################################
 
@@ -101,9 +103,9 @@ impuFun <- function(x, i, dt) {
 }
 
 ###################################################################
-## Divide the data set into two subsets
+## split the data set into two groups
 ## input: cutoff, number of the column for criteria and data set
-## output: a list of two subsets
+## output: a list of two groups
 ###################################################################
 
 divideSet <- function(x, i, dt) {
@@ -113,39 +115,7 @@ divideSet <- function(x, i, dt) {
 }
 
 
-
-## Read in the data
-
-#### classic iris example
-dt <- iris
-label <- "Species"
-
-
-
-#### project's data
-
-## Data cleaning
-
-delete_index <- rep_find(dt)
-if (length(delete_index) > 0) dt <- dt[-delete_index,]
-delete_index <- inf_find(dt[3:(ncol(dt)-1)])
-if (length(delete_index) > 0) dt <- dt[-delete_index,]
-delete_index <- na_find(dt[3:(ncol(dt)-1)])
-if (length(delete_index) > 0) dt <- dt[-delete_index,]
-dt <- dt[-c(1,  ncol(dt))] ## Exclude file name and other useless information
-
-
-### Paramemers setting
-
-label <- "Status"
-split_measure <- 15  ## how many cutoffs points are used in optimization
-max_depth <- 5
-min_instance <- 1
-info_gain <- 0.001
-
-
 ### stop criteria 1: all instances have the same label
-
 numLabels <- function(dt) {
   a1 <- select_(dt, label) %>% unique %>% nrow
   (a1 == 1)
@@ -177,14 +147,17 @@ leafNode <- function(dt) {
 }
 
 
-
 buildTree <- function(dt, label, min_instance = 1,
                       max_depth = 10, info_gain = 0.1,
-                      n_now = 1) {
+                      n_now = 1, split_measure = 15, numOfFeatures=NA) {
+  if (is.na(numOfFeatures)){
+    numOfFeatures=floor(sqrt(ncol(dt)-1)) #-1 subtract label col
+  }
 
   ### Step 0. check early-stopping criteria
   col_name <<- colnames(dt)
   col_name <<- col_name[-which(col_name == label)]
+  col_name <<- sample(col_name, numOfFeatures)
   cat("depth is:", n_now, "\n")
   
   if (numLabels(dt) |
@@ -199,7 +172,7 @@ buildTree <- function(dt, label, min_instance = 1,
     ### Compute the best split, 
     ### use optim for time-saving 
     
-    splitres <- matrix(0, nrow = length(col_name), ncol = split_measure)
+    #splitres <- matrix(0, nrow = length(col_name), ncol = split_measure), not used
     out <- NULL
     
     for (i in seq_along(col_name)) { 
@@ -237,8 +210,8 @@ buildTree <- function(dt, label, min_instance = 1,
     ### Step final.
     ### return subset
     
-    # res <- list(column = best_col, cutoff = best_cut,
-    #             L_tree = divide[[1]], R_tree = divide[[2]])
+     res <- list(column = best_col, cutoff = best_cut,
+                 L_tree = divide[[1]], R_tree = divide[[2]])
     
     ### Step final + 2
     ### grow subtrees
@@ -258,40 +231,6 @@ buildTree <- function(dt, label, min_instance = 1,
   }
 }
 
-
-## Iris example, training
-
-x2 <- buildTree(iris, "Species", min_instance = 1, max_depth = 10, info_gain = 0.001)
-
-#buildTree(dt, label, min_instance = 1, max_depth = 10, info_gain = 0.001)
-
-
-## Iris trained model display
-
-###################################################################
-## Display trained model
-## input: a trained model
-## output: tree display
-###################################################################
-
-print_tree <- function(X, prefix = "", prefix_2 = " ") {
-  for (i in c(1, 4, 5)) {
-    if (i == 1) {
-      cat(prefix, X[[i]], "<", round(X[[i + 1]], 3), "\n", sep = " ")
-    } else if (!is.list(X[[i]]) & i == 4) {
-      cat(prefix_2, "True : ", X[[i]], "\n", sep = " ")
-    } else if (!is.list(X[[i]]) & i == 5) {
-      cat(prefix_2, "False: ", X[[i]], "\n", sep = " ")
-    } else {
-      nametree(X[[i]], paste0(prefix, " "), paste0(prefix_2, "  "))  
-    }
-  }
-}
-
-print_tree(x2)
-
-
-## Iris used training data to prediciton 
 
 ###################################################################
 ## Make prediction
@@ -315,8 +254,117 @@ prediction <- function(instance, model) {
   }
 }
 
+
+## Iris trained model display
+
+###################################################################
+## Display trained tree/model
+## input: a trained tree/model
+## output: tree display
+###################################################################
+
+print_tree <- function(X, prefix = "", prefix_2 = " ") {
+  for (i in c(1, 4, 5)) {
+    if (i == 1) {
+      cat(prefix, X[[i]], "<", round(X[[i + 1]], 3), "\n", sep = " ")
+    } else if (!is.list(X[[i]]) & i == 4) {
+      cat(prefix_2, "True : ", X[[i]], "\n", sep = " ")
+    } else if (!is.list(X[[i]]) & i == 5) {
+      cat(prefix_2, "False: ", X[[i]], "\n", sep = " ")
+    } else {
+      print_tree(X[[i]], paste0(prefix, " "), paste0(prefix_2, "  ")) 
+    } 
+  }
+}
+
+
+#calculating accuracy 
+accuracy=function(dt, label, predictions){
+  actual=dt[[label]] 
+  accuracy=mean(predictions==actual)
+  return(accuracy) 
+}
+
+#bootstrap data
+bootstrap=function(dt){
+  n=nrow(dt)
+  id=sample(1:n, n, replace=T)
+  bs_data=dt[id, ]
+  return(bs_data)
+}
+
+buildForest=function(numOfTrees, dt, label, min_instance = 1, max_depth = 10, info_gain = 0.1, n_now = 1, split_measure = 15, numOfFeatures=NA){
+  forest=list()
+  for (i in 1:numOfTrees){
+    dt=bootstrap(dt)
+    forest[[i]] = buildTree(dt, label, min_instance, max_depth, info_gain, n_now, split_measure, numOfFeatures)
+  }
+  return(forest)
+}
+
+
+countVote=function(votes){
+  counts=table(votes)
+  ids=which(counts==max(counts))
+  if (length(ids)>1){
+    ids=ids[1]
+  }
+  maxVote=names(counts)[ids]
+  return(maxVote)
+  }
+
+
+forestPredict=function(dt, forest){
+  numtrees=length(forest)
+  n=nrow(dt)
+  predictionsMat=matrix(nrow=n, ncol=numtrees)
+  id=0
+  for (tree in forest){
+    predictions=c()
+      for (i in 1:nrow(dt)) {
+        predictions[i]=prediction(dt[i,], tree)
+      }
+    id=id+1
+    predictionsMat[,id]= predictions
+  }
+  maxVotes=apply(predictionsMat, 1, countVote)
+  return(maxVotes)
+}
+
+
+## classic iris example
+dt <- iris
+label <- "Species"
+
+
+#### Iris example, training
+x2 <- buildTree(dt, label, min_instance = 1, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
+
+print_tree(x2) 
+
 for (i in 1:nrow(iris)) {
   cat(prediction(iris[i,], x2), (iris[i, ]$Species) %>% as.character, "\n")
 }
 
+set.seed(12-4-16)
+forest=buildForest(4, iris, "Species", numOfFeatures=4)
+fp=forestPredict(iris, forest)
+accuracy(iris, "Species", fp)
 
+
+#### project data
+dt=read.csv("roch_all_data.csv")
+
+## Data cleaning
+delete_index <- rep_find(dt)
+if (length(delete_index) > 0) dt <- dt[-delete_index,]
+delete_index <- inf_find(dt[3:(ncol(dt)-1)])
+if (length(delete_index) > 0) dt <- dt[-delete_index,]
+delete_index <- na_find(dt[3:(ncol(dt)-1)])
+if (length(delete_index) > 0) dt <- dt[-delete_index,]
+dt <- dt[-c(1,  ncol(dt))] ## Exclude file name and other useless information
+
+label <- "Status"
+
+x3 <- buildTree(dt, label, min_instance = 1, max_depth = 5, info_gain = 0.001) #very slow, try parallelizing
+accuracy(dt, label, x3)
