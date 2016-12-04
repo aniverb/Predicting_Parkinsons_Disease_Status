@@ -124,9 +124,6 @@ label <- "Species"
 
 #### project's data
 
-dt <- read.csv("C:/Users/user/OneDrive/syn/test0_roch_all_patients.csv")
-dt <- read.csv("C:/Users/Tri/OneDrive/syn/test0_roch_all_patients.csv")
-
 ## Data cleaning
 
 delete_index <- rep_find(dt)
