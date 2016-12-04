@@ -4,6 +4,7 @@ library(data.table)
 library(dplyr)
 library(magrittr)
 library(lazyeval)
+data(iris)
 
 ###################################################################
 ## Find inf pairs in the data
@@ -106,8 +107,8 @@ impuFun <- function(x, i, dt) {
 ###################################################################
 
 divideSet <- function(x, i, dt) {
-  a1 <- filter_(dt, paste(col_name[i], ">", x)) 
-  a2 <- filter_(dt, paste(col_name[i], "<=", x))
+  a1 <- filter_(dt, paste(col_name[i], "<=", x)) 
+  a2 <- filter_(dt, paste(col_name[i], ">", x))
   return(list(a1, a2))
 }
 
@@ -239,14 +240,11 @@ buildTree <- function(dt, label, min_instance = 1,
     ### Step final.
     ### return subset
     
-    res <- list(column = best_col, cutoff = best_cut,
-                L_tree = divide[[1]], R_tree = divide[[2]])
-    
-    ### Step final + 1
-    ### record the cutoff, which column
+    # res <- list(column = best_col, cutoff = best_cut,
+    #             L_tree = divide[[1]], R_tree = divide[[2]])
     
     ### Step final + 2
-    ### grow the subtree
+    ### grow subtrees
     
     v1 <- buildTree(res$L_tree, label, min_instance = 1, max_depth = 10,
                      n_now = n_now + 1)
@@ -264,8 +262,64 @@ buildTree <- function(dt, label, min_instance = 1,
 }
 
 
-buildTree(iris, "Species", min_instance = 1, max_depth = 10, info_gain = 0.001)
+## Iris example, training
+
+x2 <- buildTree(iris, "Species", min_instance = 1, max_depth = 10, info_gain = 0.001)
 
 #buildTree(dt, label, min_instance = 1, max_depth = 10, info_gain = 0.001)
+
+
+## Iris trained model display
+
+###################################################################
+## Display trained model
+## input: a trained model
+## output: tree display
+###################################################################
+
+print_tree <- function(X, prefix = "", prefix_2 = " ") {
+  for (i in c(1, 4, 5)) {
+    if (i == 1) {
+      cat(prefix, X[[i]], "<", round(X[[i + 1]], 3), "\n", sep = " ")
+    } else if (!is.list(X[[i]]) & i == 4) {
+      cat(prefix_2, "True : ", X[[i]], "\n", sep = " ")
+    } else if (!is.list(X[[i]]) & i == 5) {
+      cat(prefix_2, "False: ", X[[i]], "\n", sep = " ")
+    } else {
+      nametree(X[[i]], paste0(prefix, " "), paste0(prefix_2, "  "))  
+    }
+  }
+}
+
+print_tree(x2)
+
+
+## Iris used training data to prediciton 
+
+###################################################################
+## Make prediction
+## input: a new instance, a trained model
+## output: a prediction
+###################################################################
+
+prediction <- function(instance, model) {
+  if (instance[model$column] < model$cutoff) {
+    if (!is.list(model$left_tree)) {
+      return(model$left_tree %>% as.character)
+    } else {
+      prediction(instance, model$left_tree)
+    }
+  } else {
+    if (!is.list(model$right_tree)) {
+      return(model$right_tree %>% as.character)
+    } else {
+      prediction(instance, model$right_tree)
+    }
+  }
+}
+
+for (i in 1:nrow(iris)) {
+  cat(prediction(iris[i,], x2), (iris[i, ]$Species) %>% as.character, "\n")
+}
 
 
