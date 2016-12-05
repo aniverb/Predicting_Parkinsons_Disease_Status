@@ -203,12 +203,14 @@ buildTree <- function(dt, label, min_instance = 1,
       
       for (j in seq_len(num_split)) {
         count <- count + 1
-        # res <- optim(cutoffs[round(length(cutoffs) / j)], impuFun,
-        #              label = label, i = i, dt = dt,
-        #              col_name = col_name, method = "BFGS")
+        ## Setting for optim    
+        res <- optim(cutoffs[round(length(cutoffs) / j)], impuFun,
+                     label = label, i = i, dt = dt,
+                     col_name = col_name, method = "BFGS")
         
-        res <- nlm(impuFun, cutoffs[round(length(cutoffs) / j)],
-            label = label, i = i, dt = dt, col_name = col_name)
+        ## Setting for nlm    
+        # res <- nlm(impuFun, cutoffs[round(length(cutoffs) / j)],
+        #     label = label, i = i, dt = dt, col_name = col_name)
 
         #out <- rbind(out, c(res[[1]], res[[2]], i, j))
         out[count, ] <- c(res[[1]], res[[2]], i, j)
@@ -216,13 +218,15 @@ buildTree <- function(dt, label, min_instance = 1,
       }
     }
     
-    # best_split <- which.min(out[, 2])[1]
-    # best_cut <- out[best_split, 1]
-    # best_col <- out[best_split, 3]
-
-    best_split <- which.min(out[, 1])[1]
-    best_cut <- out[best_split, 2]
+    ## Setting for optim    
+    best_split <- which.min(out[, 2])[1]
+    best_cut <- out[best_split, 1]
     best_col <- out[best_split, 3]
+    
+    ## Setting for nlm    
+    # best_split <- which.min(out[, 1])[1]
+    # best_cut <- out[best_split, 2]
+    # best_col <- out[best_split, 3]
     
         
     ### Step 2.
@@ -232,9 +236,11 @@ buildTree <- function(dt, label, min_instance = 1,
     
     ### Step 3.
     ### check the subset has enough information gain
-    cat("Info gain is:", badSplit(divide[[1]], divide[[2]], dt, label), "\n")
+    
     
     if (badSplit(divide[[1]], divide[[2]], dt, label) < info_gain) {
+      cat("Info gain is:", badSplit(divide[[1]], divide[[2]], dt, label),
+          "<", info_gain, "\n")
       cat("Bad Split", "\n")
       return(leafNode(dt, label))
     }
@@ -245,11 +251,16 @@ buildTree <- function(dt, label, min_instance = 1,
     ### Step final 
     ### grow subtrees
     
-    v1 <- buildTree(res$L_tree, label, min_instance = 1, max_depth = 10,
-                     n_now = n_now + 1)
-    v2 <- buildTree(res$R_tree, label, min_instance = 1, max_depth = 10,
-                     n_now = n_now + 1)
+    v1 <- buildTree(res$L_tree, label, min_instance = min_instance,
+                    max_depth = max_depth, n_now = n_now + 1,
+                    info_gain = info_gain, split_measure = split_measure,
+                    numOfFeatures = numOfFeatures) 
+    v2 <- buildTree(res$R_tree, label, min_instance = min_instance,
+                    max_depth = max_depth, n_now = n_now + 1,
+                    info_gain = info_gain, split_measure = split_measure,
+                    numOfFeatures = numOfFeatures) 
     
+
     tree <- list(column = col_name[best_col],
                 cutoff = best_cut,
                 depth = n_now,
@@ -384,10 +395,12 @@ data(iris)
 dt <- iris
 label <- "Species"
 
+dt <- readingSkills[c(1:105),]
+label <- "nativeSpeaker"
 
 #### Iris example, training
 x2 <- buildTree(dt, label, min_instance = 1,
-                split_measure = 20, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
+                split_measure = 30, max_depth = 10, info_gain = 0.001, numOfFeatures=3)
 print_tree(x2) 
 accComp(dt, x2, label)
 
