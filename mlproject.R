@@ -340,17 +340,6 @@ forestPredict=function(dt, forest){
   return(maxVotes)
 }
 
-
-## classic iris example
-dt <- iris
-label <- "Species"
-
-
-#### Iris example, training
-x2 <- buildTree(dt, label, min_instance = 1, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
-
-print_tree(x2) 
-
 ###################################################################
 ## Compute accuracy 
 ## input: data frame to be predicted, a trained model, label
@@ -369,6 +358,15 @@ acc_comp <- function(dt, model, label) {
 ###################################################################
 ###################################################################
 
+## classic iris example
+data(iris)
+dt <- iris
+label <- "Species"
+
+#### Iris example, training
+x2 <- buildTree(dt, label, min_instance = 1, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
+print_tree(x2) 
+acc_comp(dt, x2, label)
 
 ### Single prediction
 cat(prediction(iris[1,], x2), (iris[1, ]$Species) %>% as.character, "\n")
