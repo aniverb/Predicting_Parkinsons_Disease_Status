@@ -158,7 +158,7 @@ leafNode <- function(dt, label) {
 
 buildTree <- function(dt, label, min_instance = 1,
                       max_depth = 10, info_gain = 0.1,
-                      n_now = 1, split_measure = 15, numOfFeatures=NA) {
+                      n_now = 1, split_measure = 20, numOfFeatures=NA) {
   
   if (is.na(numOfFeatures)){
     numOfFeatures=floor(sqrt(ncol(dt)-1)) #-1 subtract label col
@@ -193,21 +193,31 @@ buildTree <- function(dt, label, min_instance = 1,
       
       num_split <- ifelse(split_measure < length(cutoffs),
                           split_measure, length(cutoffs))
-      cat(cutoffs, "\n")
+      #cat(cutoffs, "\n")
       
       for (j in seq_len(num_split)) {
-        res <- optim(cutoffs[round(length(cutoffs) / j)], impuFun,
-                     label = label, i = i, dt = dt,
-                     col_name = col_name, method = "BFGS")
+        
+        # res <- optim(cutoffs[round(length(cutoffs) / j)], impuFun,
+        #              label = label, i = i, dt = dt,
+        #              col_name = col_name, method = "BFGS")
+        
+        res <- nlm(impuFun, cutoffs[round(length(cutoffs) / j)],
+            label = label, i = i, dt = dt, col_name = col_name)
+
         out <- rbind(out, c(res[[1]], res[[2]], i, j))
         cat(res[[1]], res[[2]], i, j, "\n")
       }
     }
     
-    best_split <- which.min(out[, 2])[1]
-    best_cut <- out[best_split, 1]
+    # best_split <- which.min(out[, 2])[1]
+    # best_cut <- out[best_split, 1]
+    # best_col <- out[best_split, 3]
+
+    best_split <- which.min(out[, 1])[1]
+    best_cut <- out[best_split, 2]
     best_col <- out[best_split, 3]
     
+        
     ### Step 2.
     ### Split the data
     
@@ -350,7 +360,8 @@ label <- "Species"
 
 
 #### Iris example, training
-x2 <- buildTree(dt, label, min_instance = 1, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
+x2 <- buildTree(dt, label, min_instance = 1,
+                split_measure = 20, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
 
 print_tree(x2) 
 
