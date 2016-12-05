@@ -3,6 +3,10 @@ rm(list=ls())
 library(lazyeval)
 library(dplyr)
 library(magrittr)
+library(foreach)
+library(doParallel)
+cl<-makeCluster(3)
+registerDoParallel(cl)
 
 setwd("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Parkinsons data\\5 tests")
 
@@ -113,7 +117,7 @@ divideSet <- function(x, i, dt, col_name) {
 }
 
 ###################################################################
-## Stoppin criterion
+## Stopping criterion
 ## input: data frame and other parameters
 ## output: boolean logic (except badSplit(.), it outputs a value)
 ###################################################################
@@ -185,7 +189,6 @@ buildTree <- function(dt, label, min_instance = 1,
     ### use optim for time-saving 
     
     out <- NULL
-    
     for (i in seq_along(col_name)) { 
       
       all_cut <- arrange_(dt, col_name[i]) %>% select_(., col_name[i]) %>% unique  ## get the value of i-th column
@@ -299,7 +302,7 @@ print_tree <- function(X, prefix = "", prefix_2 = " ") {
 }
 
 
-#calculating accuracy 
+#calculating accuracy for random forrest
 accuracy=function(dt, label, predictions){
   actual=dt[[label]] 
   accuracy=mean(predictions==actual)
@@ -354,19 +357,8 @@ forestPredict=function(dt, forest){
 }
 
 
-## classic iris example
-dt <- iris
-label <- "Species"
-
-
-#### Iris example, training
-x2 <- buildTree(dt, label, min_instance = 1,
-                split_measure = 20, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
-
-print_tree(x2) 
-
 ###################################################################
-## Compute accuracy 
+## Compute accuracy for decision tree
 ## input: data frame to be predicted, a trained model, label
 ## output: accuracy (%)
 ###################################################################
@@ -383,6 +375,17 @@ accComp <- function(dt, model, label) {
 ###################################################################
 ###################################################################
 
+## classic iris example
+data(iris)
+dt <- iris
+label <- "Species"
+
+
+#### Iris example, training
+x2 <- buildTree(dt, label, min_instance = 1,
+                split_measure = 20, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
+print_tree(x2) 
+accComp(dt, x2, label)
 
 ### Single prediction
 cat(prediction(iris[1,], x2), (iris[1, ]$Species) %>% as.character, "\n")
@@ -413,11 +416,13 @@ dt <- dt[-c(1,  ncol(dt))] ## Exclude file name and other useless information
 
 label <- "Status"
 
-x3 <- buildTree(dt, label, min_instance = 1, max_depth = 5, info_gain = 0.001) #very slow, try parallelizing
-accuracy(dt, label, x3)
+x3 <- buildTree(dt, label, min_instance = 1, max_depth = 5, info_gain = 0.001) 
+accComp(dt, x3, label)
 
-### Compute accuracy
-accComp(iris, x2, "Species")
+set.seed(12-4-16)
+forest2=buildForest(4, dt, label, info_gain = 0.001)
+fp=forestPredict(dt, forest2)
+accuracy(dt, label, fp)
 
 ### Paramemers setting
 
