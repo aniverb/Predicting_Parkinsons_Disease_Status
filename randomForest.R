@@ -5,6 +5,8 @@ library(dplyr)
 library(magrittr)
 library(foreach)
 library(doParallel)
+library(party)
+
 cl<-makeCluster(3)
 registerDoParallel(cl)
 
@@ -302,20 +304,48 @@ prediction <- function(instance, model) {
 ## output: tree display
 ###################################################################
 
+# print_tree <- function(X, prefix = "", prefix_2 = " ") {
+#   for (i in c(1, 4, 5)) {
+#     if (i == 1) {
+#       cat(prefix, X[[i]], "<", round(X[[i + 1]], 3), "\n", sep = " ")
+#     } else if (!is.list(X[[i]]) & i == 4) {
+#       cat(prefix_2, "True : ", X[[i]], "\n", sep = " ")
+#     } else if (!is.list(X[[i]]) & i == 5) {
+#       cat(prefix_2, "False: ", X[[i]], "\n", sep = " ")
+#     } else {
+#       print_tree(X[[i]], paste0(prefix, " "), paste0(prefix_2, "  ")) 
+#     } 
+#   }
+# }
+
 print_tree <- function(X, prefix = "", prefix_2 = " ") {
   for (i in c(1, 4, 5)) {
     if (i == 1) {
-      cat(prefix, X[[i]], "<", round(X[[i + 1]], 3), "\n", sep = " ")
-    } else if (!is.list(X[[i]]) & i == 4) {
-      cat(prefix_2, "True : ", X[[i]], "\n", sep = " ")
-    } else if (!is.list(X[[i]]) & i == 5) {
-      cat(prefix_2, "False: ", X[[i]], "\n", sep = " ")
-    } else {
-      print_tree(X[[i]], paste0(prefix, " "), paste0(prefix_2, "  ")) 
+      cat(prefix, paste(X[[3]], ")", sep = ""), X[[i]],
+          "<=", round(X[[2]], 3), "\n", sep = " ")
+    } else if (i == 4) {
+      if (!is.list(X[[i]])) {
+        cat(prefix_2, paste(X[[3]], ")", sep = ""),
+            "True :", X[[i]], "*", "\n", sep = " ")
+      } else {
+        cat(prefix_2, paste(X[[3]], ")", sep = ""), "True :", X[[1]],
+            "<=", round(X[[2]], 3), "\n", sep = " ")
+        print_tree(X[[i]], paste0(prefix, "  "), paste0(prefix_2, "  "))
+
+      }
+    } else if (i == 5) {
+      if (!is.list(X[[i]])) {
+        cat(prefix_2, paste(X[[3]], ")", sep = ""),
+            "False:", X[[i]], "*", "\n", sep = " ")
+      } else {
+        cat(prefix_2, paste(X[[3]], ")", sep = ""), "False:", X[[1]],
+            ">", round(X[[2]], 3), "\n", sep = " ")
+        print_tree(X[[i]], paste0(prefix, "  "), paste0(prefix_2, "  "))
+
+      }
     } 
   }
 }
-
 
 #calculating accuracy for random forrest
 accuracy=function(dt, label, predictions){
@@ -395,8 +425,9 @@ data(iris)
 dt <- iris
 label <- "Species"
 
-dt <- readingSkills[c(1:105),]
-label <- "nativeSpeaker"
+#### another example data
+# dt <- readingSkills[c(1:105),]
+# label <- "nativeSpeaker"
 
 #### Iris example, training
 x2 <- buildTree(dt, label, min_instance = 1,
