@@ -93,7 +93,7 @@ giniIndex <- function(dt, label) {
 ## output: impurity
 ###################################################################
 
-impuFun <- function(x, i, dt, label) {
+impuFun <- function(x, i, dt, label, col_name) {
   a1 <- filter_(dt, paste(col_name[i], ">", x)) %>% select_(., label) 
   a2 <- filter_(dt, paste(col_name[i], "<=", x)) %>% select_(., label) 
   nrow(a1) / nrow(dt) * giniIndex(a1, label) + 
@@ -106,7 +106,7 @@ impuFun <- function(x, i, dt, label) {
 ## output: a list of two groups
 ###################################################################
 
-divideSet <- function(x, i, dt) {
+divideSet <- function(x, i, dt, col_name) {
   a1 <- filter_(dt, paste(col_name[i], "<=", x)) 
   a2 <- filter_(dt, paste(col_name[i], ">", x))
   return(list(a1, a2))
@@ -159,19 +159,22 @@ leafNode <- function(dt, label) {
 buildTree <- function(dt, label, min_instance = 1,
                       max_depth = 10, info_gain = 0.1,
                       n_now = 1, split_measure = 15, numOfFeatures=NA) {
+  
   if (is.na(numOfFeatures)){
     numOfFeatures=floor(sqrt(ncol(dt)-1)) #-1 subtract label col
   }
+  
   ### Step 0. check early-stopping criteria
 
-  col_name <<- colnames(dt)
-  col_name <<- col_name[-which(col_name == label)]
-  col_name <<- sample(col_name, numOfFeatures)
+  col_name <- colnames(dt)
+  col_name <- col_name[-which(col_name == label)]
+  col_name <- sample(col_name, numOfFeatures)
+  
   cat("depth is:", n_now, "\n")
   
-  if (numLabels(dt, label) |
-     maxDepth(n_now, max_depth) |
+  if (numLabels(dt, label) | maxDepth(n_now, max_depth) |
      numEx(dt, min_instance)) {
+    
     cat("Early stopping", "\n")
     return(leafNode(dt, label))
     
@@ -181,7 +184,6 @@ buildTree <- function(dt, label, min_instance = 1,
     ### Compute the best split, 
     ### use optim for time-saving 
     
-    #splitres <- matrix(0, nrow = length(col_name), ncol = split_measure), not used
     out <- NULL
     
     for (i in seq_along(col_name)) { 
@@ -191,12 +193,14 @@ buildTree <- function(dt, label, min_instance = 1,
       
       num_split <- ifelse(split_measure < length(cutoffs),
                           split_measure, length(cutoffs))
+      cat(cutoffs, "\n")
       
       for (j in seq_len(num_split)) {
         res <- optim(cutoffs[round(length(cutoffs) / j)], impuFun,
-                     label = label, i = i, dt = dt, method = "BFGS")
+                     label = label, i = i, dt = dt,
+                     col_name = col_name, method = "BFGS")
         out <- rbind(out, c(res[[1]], res[[2]], i, j))
-        #cat(res[[1]], res[[2]], i, j, "\n")
+        cat(res[[1]], res[[2]], i, j, "\n")
       }
     }
     
@@ -207,7 +211,7 @@ buildTree <- function(dt, label, min_instance = 1,
     ### Step 2.
     ### Split the data
     
-    divide <- divideSet(best_cut, best_col, dt)
+    divide <- divideSet(best_cut, best_col, dt, col_name)
     
     ### Step 3.
     ### check the subset has enough information gain
@@ -218,7 +222,6 @@ buildTree <- function(dt, label, min_instance = 1,
       return(leafNode(dt, label))
     }
     
-
     res <- list(column = best_col, cutoff = best_cut,
                 L_tree = divide[[1]], R_tree = divide[[2]])
 
@@ -340,13 +343,24 @@ forestPredict=function(dt, forest){
   return(maxVotes)
 }
 
+
+## classic iris example
+dt <- iris
+label <- "Species"
+
+
+#### Iris example, training
+x2 <- buildTree(dt, label, min_instance = 1, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
+
+print_tree(x2) 
+
 ###################################################################
 ## Compute accuracy 
 ## input: data frame to be predicted, a trained model, label
 ## output: accuracy (%)
 ###################################################################
 
-acc_comp <- function(dt, model, label) {
+accComp <- function(dt, model, label) {
   pred_label <- sapply(seq_len(nrow(dt)), function(x) prediction(dt[x,], model))
   true_label <- select_(dt, label)
   accu <- sum(pred_label == true_label) / nrow(dt)
@@ -358,15 +372,6 @@ acc_comp <- function(dt, model, label) {
 ###################################################################
 ###################################################################
 
-## classic iris example
-data(iris)
-dt <- iris
-label <- "Species"
-
-#### Iris example, training
-x2 <- buildTree(dt, label, min_instance = 1, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
-print_tree(x2) 
-acc_comp(dt, x2, label)
 
 ### Single prediction
 cat(prediction(iris[1,], x2), (iris[1, ]$Species) %>% as.character, "\n")
@@ -401,7 +406,7 @@ x3 <- buildTree(dt, label, min_instance = 1, max_depth = 5, info_gain = 0.001) #
 accuracy(dt, label, x3)
 
 ### Compute accuracy
-acc_comp(iris, x2, "Species")
+accComp(iris, x2, "Species")
 
 ### Paramemers setting
 
