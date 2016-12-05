@@ -186,9 +186,12 @@ buildTree <- function(dt, label, min_instance = 1,
     
     ### Step 1.
     ### Compute the best split, 
-    ### use optim for time-saving 
+    ### use optimization for time-saving 
     
-    out <- NULL
+    #out <- NULL
+    out <- matrix(NA, nrow = length(col_name) * split_measure, ncol = 4)
+    count <- 0
+    
     for (i in seq_along(col_name)) { 
       
       all_cut <- arrange_(dt, col_name[i]) %>% select_(., col_name[i]) %>% unique  ## get the value of i-th column
@@ -199,7 +202,7 @@ buildTree <- function(dt, label, min_instance = 1,
       #cat(cutoffs, "\n")
       
       for (j in seq_len(num_split)) {
-        
+        count <- count + 1
         # res <- optim(cutoffs[round(length(cutoffs) / j)], impuFun,
         #              label = label, i = i, dt = dt,
         #              col_name = col_name, method = "BFGS")
@@ -207,7 +210,8 @@ buildTree <- function(dt, label, min_instance = 1,
         res <- nlm(impuFun, cutoffs[round(length(cutoffs) / j)],
             label = label, i = i, dt = dt, col_name = col_name)
 
-        out <- rbind(out, c(res[[1]], res[[2]], i, j))
+        #out <- rbind(out, c(res[[1]], res[[2]], i, j))
+        out[count, ] <- c(res[[1]], res[[2]], i, j)
         cat(res[[1]], res[[2]], i, j, "\n")
       }
     }
@@ -386,6 +390,14 @@ x2 <- buildTree(dt, label, min_instance = 1,
                 split_measure = 20, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
 print_tree(x2) 
 accComp(dt, x2, label)
+
+###### time testing
+a <- Sys.time()
+x2 <- buildTree(dt, label, min_instance = 1,
+                split_measure = 20, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
+b <- Sys.time() - a
+b
+######
 
 ### Single prediction
 cat(prediction(iris[1,], x2), (iris[1, ]$Species) %>% as.character, "\n")
