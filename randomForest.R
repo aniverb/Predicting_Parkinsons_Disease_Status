@@ -233,13 +233,13 @@ buildTree <- function(dt, label, min_instance = 1,
     v2 <- buildTree(res$R_tree, label, min_instance = 1, max_depth = 10,
                      n_now = n_now + 1)
     
-    out <- list(column = col_name[best_col],
+    tree <- list(column = col_name[best_col],
                 cutoff = best_cut,
                 depth = n_now,
                 left_tree = v1,
                 right_tree = v2)
     
-    return(out)
+    return(tree)
   }
 }
 
