@@ -1,10 +1,8 @@
 rm(list=ls())
 
-library(data.table)
+library(lazyeval)
 library(dplyr)
 library(magrittr)
-library(lazyeval)
-data(iris)
 
 setwd("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Parkinsons data\\5 tests")
 
@@ -95,7 +93,7 @@ giniIndex <- function(dt, label) {
 ## output: impurity
 ###################################################################
 
-impuFun <- function(x, i, dt) {
+impuFun <- function(x, i, dt, label) {
   a1 <- filter_(dt, paste(col_name[i], ">", x)) %>% select_(., label) 
   a2 <- filter_(dt, paste(col_name[i], "<=", x)) %>% select_(., label) 
   nrow(a1) / nrow(dt) * giniIndex(a1, label) + 
@@ -114,38 +112,49 @@ divideSet <- function(x, i, dt) {
   return(list(a1, a2))
 }
 
+###################################################################
+## Stoppin criterion
+## input: data frame and other parameters
+## output: boolean logic (except badSplit(.), it outputs a value)
+###################################################################
 
-### stop criteria 1: all instances have the same label
-numLabels <- function(dt) {
+#### stop criteria 1: all instances have the same label
+
+numLabels <- function(dt, label) {
   a1 <- select_(dt, label) %>% unique %>% nrow
   (a1 == 1)
 }
 
-### stop criteria 2: reach maximum depth
+#### stop criteria 2: reach maximum depth
 maxDepth <- function(nn, mdep) {
   nn >= mdep
 }
 
-### stop criteria 3: too few instances for child node
+#### stop criteria 3: too few instances for child node
 numEx <- function(dt, num) {
   nrow(dt) < num
 }
 
-### stop criteria 4: split will not gain info
-badSplit <- function(sdt1, sdt2, dt) {
+#### stop criteria 4: split will not gain info
+badSplit <- function(sdt1, sdt2, dt, label) {
   giniIndex(dt, label) - 
     nrow(sdt1) / nrow(dt) * giniIndex(sdt1, label) -
       nrow(sdt2) / nrow(dt) * giniIndex(sdt2, label)
 }
 
-### create leaf (terminal) node
-leafNode <- function(dt) {
+
+###################################################################
+## Create a leaf (terminal) node, whenever satisfies stopping criteria
+## input: data frame 
+## output: predicted label
+###################################################################
+
+leafNode <- function(dt, label) {
   a1 <- count_(dt, label)
   z1 <- which.max(a1[[2]]) 
-  label <- a1[[1]][z1] %>% as.character
-  return(label)
+  prediction <- a1[[1]][z1] %>% as.character
+  return(prediction)
 }
-
 
 buildTree <- function(dt, label, min_instance = 1,
                       max_depth = 10, info_gain = 0.1,
@@ -153,18 +162,18 @@ buildTree <- function(dt, label, min_instance = 1,
   if (is.na(numOfFeatures)){
     numOfFeatures=floor(sqrt(ncol(dt)-1)) #-1 subtract label col
   }
-
   ### Step 0. check early-stopping criteria
+
   col_name <<- colnames(dt)
   col_name <<- col_name[-which(col_name == label)]
   col_name <<- sample(col_name, numOfFeatures)
   cat("depth is:", n_now, "\n")
   
-  if (numLabels(dt) |
+  if (numLabels(dt, label) |
      maxDepth(n_now, max_depth) |
      numEx(dt, min_instance)) {
-    cat("E-stop", "\n")
-    return(leafNode(dt))
+    cat("Early stopping", "\n")
+    return(leafNode(dt, label))
     
   } else {
     
@@ -180,10 +189,12 @@ buildTree <- function(dt, label, min_instance = 1,
       all_cut <- arrange_(dt, col_name[i]) %>% select_(., col_name[i]) %>% unique  ## get the value of i-th column
       cutoffs <- (all_cut[-1,] + all_cut[-length(all_cut),]) / 2
       
-      num_split <- ifelse(split_measure < length(cutoffs), split_measure, length(cutoffs))
+      num_split <- ifelse(split_measure < length(cutoffs),
+                          split_measure, length(cutoffs))
       
       for (j in seq_len(num_split)) {
-        res <- optim(cutoffs[round(length(cutoffs) / j)], impuFun, i = i, dt = dt, method = "BFGS")
+        res <- optim(cutoffs[round(length(cutoffs) / j)], impuFun,
+                     label = label, i = i, dt = dt, method = "BFGS")
         out <- rbind(out, c(res[[1]], res[[2]], i, j))
         #cat(res[[1]], res[[2]], i, j, "\n")
       }
@@ -200,20 +211,18 @@ buildTree <- function(dt, label, min_instance = 1,
     
     ### Step 3.
     ### check the subset has enough information gain
-    cat(badSplit(divide[[1]], divide[[2]], dt),"\n")
+    cat("Info gain is:", badSplit(divide[[1]], divide[[2]], dt, label), "\n")
     
-    if (badSplit(divide[[1]], divide[[2]], dt) < info_gain) {
+    if (badSplit(divide[[1]], divide[[2]], dt, label) < info_gain) {
       cat("Bad Split", "\n")
-      return(leafNode(dt))
+      return(leafNode(dt, label))
     }
     
-    ### Step final.
-    ### return subset
-    
-     res <- list(column = best_col, cutoff = best_cut,
-                 L_tree = divide[[1]], R_tree = divide[[2]])
-    
-    ### Step final + 2
+
+    res <- list(column = best_col, cutoff = best_cut,
+                L_tree = divide[[1]], R_tree = divide[[2]])
+
+    ### Step final 
     ### grow subtrees
     
     v1 <- buildTree(res$L_tree, label, min_instance = 1, max_depth = 10,
@@ -230,7 +239,6 @@ buildTree <- function(dt, label, min_instance = 1,
     return(out)
   }
 }
-
 
 ###################################################################
 ## Make prediction
@@ -293,6 +301,7 @@ bootstrap=function(dt){
   return(bs_data)
 }
 
+
 buildForest=function(numOfTrees, dt, label, min_instance = 1, max_depth = 10, info_gain = 0.1, n_now = 1, split_measure = 15, numOfFeatures=NA){
   forest=list()
   for (i in 1:numOfTrees){
@@ -342,9 +351,33 @@ x2 <- buildTree(dt, label, min_instance = 1, max_depth = 10, info_gain = 0.001, 
 
 print_tree(x2) 
 
+###################################################################
+## Compute accuracy 
+## input: data frame to be predicted, a trained model, label
+## output: accuracy (%)
+###################################################################
+
+acc_comp <- function(dt, model, label) {
+  pred_label <- sapply(seq_len(nrow(dt)), function(x) prediction(dt[x,], model))
+  true_label <- select_(dt, label)
+  accu <- sum(pred_label == true_label) / nrow(dt)
+  cat("Accuracy is:", accu * 100, "%")
+}
+
+
+###################################################################
+###################################################################
+###################################################################
+
+
+### Single prediction
+cat(prediction(iris[1,], x2), (iris[1, ]$Species) %>% as.character, "\n")
+
+### Display all iris example predictions
 for (i in 1:nrow(iris)) {
   cat(prediction(iris[i,], x2), (iris[i, ]$Species) %>% as.character, "\n")
 }
+
 
 set.seed(12-4-16)
 forest=buildForest(4, iris, "Species", numOfFeatures=4)
@@ -368,3 +401,16 @@ label <- "Status"
 
 x3 <- buildTree(dt, label, min_instance = 1, max_depth = 5, info_gain = 0.001) #very slow, try parallelizing
 accuracy(dt, label, x3)
+
+### Compute accuracy
+acc_comp(iris, x2, "Species")
+
+### Paramemers setting
+
+label <- "Status"
+split_measure <- 15  ## how many cutoffs points are used in optimization
+max_depth <- 5
+min_instance <- 1
+info_gain <- 0.001
+
+#buildTree(dt, label, min_instance = 1, max_depth = 10, info_gain = 0.001)
