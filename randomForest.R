@@ -163,6 +163,11 @@ leafNode <- function(dt, label) {
 buildTree <- function(dt, label, min_instance = 1,
                       max_depth = 10, info_gain = 0.1,
                       n_now = 1, split_measure = 20, numOfFeatures=NA) {
+  library(lazyeval)
+  library(dplyr)
+  library(magrittr)
+  library(foreach)
+  library(doParallel)
   
   if (is.na(numOfFeatures)){
     numOfFeatures=floor(sqrt(ncol(dt)-1)) #-1 subtract label col
@@ -189,16 +194,16 @@ buildTree <- function(dt, label, min_instance = 1,
     ### use optim for time-saving 
     
     out <- NULL
-    for (i in seq_along(col_name)) { 
+    foreach(i=seq_along(col_name), .combine = c) %dopar% { 
       
-      all_cut <- arrange_(dt, col_name[i]) %>% select_(., col_name[i]) %>% unique  ## get the value of i-th column
+      all_cut <- dpyr::arrange_(dt, col_name[i]) magrittr::`%>%` select_(., col_name[i]) magrittr::`%>%` unique  ## get the value of i-th column
       cutoffs <- (all_cut[-1,] + all_cut[-length(all_cut),]) / 2
       
       num_split <- ifelse(split_measure < length(cutoffs),
                           split_measure, length(cutoffs))
       #cat(cutoffs, "\n")
       
-      for (j in seq_len(num_split)) {
+      foreach(j=seq_len(num_split), .combine = c) %dopar% {
         
         # res <- optim(cutoffs[round(length(cutoffs) / j)], impuFun,
         #              label = label, i = i, dt = dt,
@@ -340,13 +345,21 @@ countVote=function(votes){
 
 
 forestPredict=function(dt, forest){
+  library(lazyeval);
+  library(dplyr);
+  library(magrittr);
+  library(foreach);
+  library(doParallel);
+  cl<-makeCluster(3);
+  registerDoParallel(cl);
+  
   numtrees=length(forest)
   n=nrow(dt)
   predictionsMat=matrix(nrow=n, ncol=numtrees)
   id=0
-  for (tree in forest){
+  foreach(tree=forest)%dopar%{
     predictions=c()
-      for (i in 1:nrow(dt)) {
+    foreach(i= 1:nrow(dt))%dopar% {
         predictions[i]=prediction(dt[i,], tree)
       }
     id=id+1
@@ -382,8 +395,7 @@ label <- "Species"
 
 
 #### Iris example, training
-x2 <- buildTree(dt, label, min_instance = 1,
-                split_measure = 20, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
+x2 <- buildTree(dt, label, min_instance = 1, split_measure = 20, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
 print_tree(x2) 
 accComp(dt, x2, label)
 
