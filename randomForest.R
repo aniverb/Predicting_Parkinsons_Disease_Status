@@ -5,8 +5,11 @@ library(dplyr)
 library(magrittr)
 library(foreach)
 library(doParallel)
+library(party)
+
 cl<-makeCluster(3)
 registerDoParallel(cl)
+clusterCall(cl, function() {library(lazyeval); library(dplyr); library(magrittr); library(foreach); library(doParallel); library(party)})
 
 setwd("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Parkinsons data\\5 tests")
 
@@ -163,11 +166,6 @@ leafNode <- function(dt, label) {
 buildTree <- function(dt, label, min_instance = 1,
                       max_depth = 10, info_gain = 0.1,
                       n_now = 1, split_measure = 20, numOfFeatures=NA) {
-  library(lazyeval)
-  library(dplyr)
-  library(magrittr)
-  library(foreach)
-  library(doParallel)
   
   if (is.na(numOfFeatures)){
     numOfFeatures=floor(sqrt(ncol(dt)-1)) #-1 subtract label col
@@ -191,39 +189,48 @@ buildTree <- function(dt, label, min_instance = 1,
     
     ### Step 1.
     ### Compute the best split, 
-    ### use optim for time-saving 
+    ### use optimization for time-saving 
     
-    out <- NULL
-    foreach(i=seq_along(col_name), .combine = c) %dopar% { 
+    #out <- NULL
+    out <- matrix(NA, nrow = length(col_name) * split_measure, ncol = 4)
+    count <- 0
+    
+    foreach(i=seq_along(col_name), .export=c('impuFun', 'divideSet','badSplit', 'giniIndex', 'leafNode')) %dopar% { 
       
-      all_cut <- dpyr::arrange_(dt, col_name[i]) magrittr::`%>%` select_(., col_name[i]) magrittr::`%>%` unique  ## get the value of i-th column
+      all_cut <- arrange_(dt, col_name[i]) %>% select_(., col_name[i]) %>% unique  ## get the value of i-th column
       cutoffs <- (all_cut[-1,] + all_cut[-length(all_cut),]) / 2
       
       num_split <- ifelse(split_measure < length(cutoffs),
                           split_measure, length(cutoffs))
       #cat(cutoffs, "\n")
       
-      foreach(j=seq_len(num_split), .combine = c) %dopar% {
-        
-        # res <- optim(cutoffs[round(length(cutoffs) / j)], impuFun,
-        #              label = label, i = i, dt = dt,
-        #              col_name = col_name, method = "BFGS")
-        
-        res <- nlm(impuFun, cutoffs[round(length(cutoffs) / j)],
-            label = label, i = i, dt = dt, col_name = col_name)
 
-        out <- rbind(out, c(res[[1]], res[[2]], i, j))
+      foreach(j=seq_len(num_split), .export=c('impuFun', 'divideSet','badSplit', 'giniIndex', 'leafNode')) %dopar% {
+        count <- count + 1
+        ## Setting for optim    
+        res <- optim(cutoffs[round(length(cutoffs) / j)], impuFun,
+                     label = label, i = i, dt = dt,
+                     col_name = col_name, method = "BFGS")
+        
+        ## Setting for nlm    
+        # res <- nlm(impuFun, cutoffs[round(length(cutoffs) / j)],
+        #     label = label, i = i, dt = dt, col_name = col_name)
+
+        #out <- rbind(out, c(res[[1]], res[[2]], i, j))
+        out[count, ] <- c(res[[1]], res[[2]], i, j)
         cat(res[[1]], res[[2]], i, j, "\n")
       }
     }
     
-    # best_split <- which.min(out[, 2])[1]
-    # best_cut <- out[best_split, 1]
-    # best_col <- out[best_split, 3]
-
-    best_split <- which.min(out[, 1])[1]
-    best_cut <- out[best_split, 2]
+    ## Setting for optim    
+    best_split <- which.min(out[, 2])[1]
+    best_cut <- out[best_split, 1]
     best_col <- out[best_split, 3]
+    
+    ## Setting for nlm    
+    # best_split <- which.min(out[, 1])[1]
+    # best_cut <- out[best_split, 2]
+    # best_col <- out[best_split, 3]
     
         
     ### Step 2.
@@ -233,9 +240,11 @@ buildTree <- function(dt, label, min_instance = 1,
     
     ### Step 3.
     ### check the subset has enough information gain
-    cat("Info gain is:", badSplit(divide[[1]], divide[[2]], dt, label), "\n")
+    
     
     if (badSplit(divide[[1]], divide[[2]], dt, label) < info_gain) {
+      cat("Info gain is:", badSplit(divide[[1]], divide[[2]], dt, label),
+          "<", info_gain, "\n")
       cat("Bad Split", "\n")
       return(leafNode(dt, label))
     }
@@ -246,11 +255,16 @@ buildTree <- function(dt, label, min_instance = 1,
     ### Step final 
     ### grow subtrees
     
-    v1 <- buildTree(res$L_tree, label, min_instance = 1, max_depth = 10,
-                     n_now = n_now + 1)
-    v2 <- buildTree(res$R_tree, label, min_instance = 1, max_depth = 10,
-                     n_now = n_now + 1)
+    v1 <- buildTree(res$L_tree, label, min_instance = min_instance,
+                    max_depth = max_depth, n_now = n_now + 1,
+                    info_gain = info_gain, split_measure = split_measure,
+                    numOfFeatures = numOfFeatures) 
+    v2 <- buildTree(res$R_tree, label, min_instance = min_instance,
+                    max_depth = max_depth, n_now = n_now + 1,
+                    info_gain = info_gain, split_measure = split_measure,
+                    numOfFeatures = numOfFeatures) 
     
+
     tree <- list(column = col_name[best_col],
                 cutoff = best_cut,
                 depth = n_now,
@@ -292,20 +306,48 @@ prediction <- function(instance, model) {
 ## output: tree display
 ###################################################################
 
+# print_tree <- function(X, prefix = "", prefix_2 = " ") {
+#   for (i in c(1, 4, 5)) {
+#     if (i == 1) {
+#       cat(prefix, X[[i]], "<", round(X[[i + 1]], 3), "\n", sep = " ")
+#     } else if (!is.list(X[[i]]) & i == 4) {
+#       cat(prefix_2, "True : ", X[[i]], "\n", sep = " ")
+#     } else if (!is.list(X[[i]]) & i == 5) {
+#       cat(prefix_2, "False: ", X[[i]], "\n", sep = " ")
+#     } else {
+#       print_tree(X[[i]], paste0(prefix, " "), paste0(prefix_2, "  ")) 
+#     } 
+#   }
+# }
+
 print_tree <- function(X, prefix = "", prefix_2 = " ") {
   for (i in c(1, 4, 5)) {
     if (i == 1) {
-      cat(prefix, X[[i]], "<", round(X[[i + 1]], 3), "\n", sep = " ")
-    } else if (!is.list(X[[i]]) & i == 4) {
-      cat(prefix_2, "True : ", X[[i]], "\n", sep = " ")
-    } else if (!is.list(X[[i]]) & i == 5) {
-      cat(prefix_2, "False: ", X[[i]], "\n", sep = " ")
-    } else {
-      print_tree(X[[i]], paste0(prefix, " "), paste0(prefix_2, "  ")) 
+      cat(prefix, paste(X[[3]], ")", sep = ""), X[[i]],
+          "<=", round(X[[2]], 3), "\n", sep = " ")
+    } else if (i == 4) {
+      if (!is.list(X[[i]])) {
+        cat(prefix_2, paste(X[[3]], ")", sep = ""),
+            "True :", X[[i]], "*", "\n", sep = " ")
+      } else {
+        cat(prefix_2, paste(X[[3]], ")", sep = ""), "True :", X[[1]],
+            "<=", round(X[[2]], 3), "\n", sep = " ")
+        print_tree(X[[i]], paste0(prefix, "  "), paste0(prefix_2, "  "))
+
+      }
+    } else if (i == 5) {
+      if (!is.list(X[[i]])) {
+        cat(prefix_2, paste(X[[3]], ")", sep = ""),
+            "False:", X[[i]], "*", "\n", sep = " ")
+      } else {
+        cat(prefix_2, paste(X[[3]], ")", sep = ""), "False:", X[[1]],
+            ">", round(X[[2]], 3), "\n", sep = " ")
+        print_tree(X[[i]], paste0(prefix, "  "), paste0(prefix_2, "  "))
+
+      }
     } 
   }
 }
-
 
 #calculating accuracy for random forrest
 accuracy=function(dt, label, predictions){
@@ -345,21 +387,13 @@ countVote=function(votes){
 
 
 forestPredict=function(dt, forest){
-  library(lazyeval);
-  library(dplyr);
-  library(magrittr);
-  library(foreach);
-  library(doParallel);
-  cl<-makeCluster(3);
-  registerDoParallel(cl);
-  
   numtrees=length(forest)
   n=nrow(dt)
   predictionsMat=matrix(nrow=n, ncol=numtrees)
   id=0
-  foreach(tree=forest)%dopar%{
+  foreach(tree=forest, .export=c('prediction'))%dopar%{
     predictions=c()
-    foreach(i= 1:nrow(dt))%dopar% {
+    foreach(i= 1:nrow(dt), .export=c('prediction'))%dopar% {
         predictions[i]=prediction(dt[i,], tree)
       }
     id=id+1
@@ -393,11 +427,23 @@ data(iris)
 dt <- iris
 label <- "Species"
 
+#### another example data
+# dt <- readingSkills[c(1:105),]
+# label <- "nativeSpeaker"
 
 #### Iris example, training
 x2 <- buildTree(dt, label, min_instance = 1, split_measure = 20, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
+
 print_tree(x2) 
 accComp(dt, x2, label)
+
+###### time testing
+a <- Sys.time()
+x2 <- buildTree(dt, label, min_instance = 1,
+                split_measure = 20, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
+b <- Sys.time() - a
+b
+######
 
 ### Single prediction
 cat(prediction(iris[1,], x2), (iris[1, ]$Species) %>% as.character, "\n")
