@@ -12,6 +12,7 @@ registerDoParallel(cl)
 clusterCall(cl, function() {library(lazyeval); library(dplyr); library(magrittr); library(foreach); library(doParallel); library(party)})
 
 setwd("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Parkinsons data\\5 tests")
+setwd("C:/Users/Tri/Documents/")
 
 ###################################################################
 ## Find inf pairs in the data
@@ -191,46 +192,58 @@ buildTree <- function(dt, label, min_instance = 1,
     ### Compute the best split, 
     ### use optimization for time-saving 
     
-    #out <- NULL
-    out <- matrix(NA, nrow = length(col_name) * split_measure, ncol = 4)
-    count <- 0
-    
-    foreach(i=seq_along(col_name), .export=c('impuFun', 'divideSet','badSplit', 'giniIndex', 'leafNode')) %dopar% { 
-      
+    a <- Sys.time()
+    out <- NULL
+
+    for (i in seq_along(col_name)) {
       all_cut <- arrange_(dt, col_name[i]) %>% select_(., col_name[i]) %>% unique  ## get the value of i-th column
       cutoffs <- (all_cut[-1,] + all_cut[-length(all_cut),]) / 2
-      
+
       num_split <- ifelse(split_measure < length(cutoffs),
                           split_measure, length(cutoffs))
-      #cat(cutoffs, "\n")
-      
 
-      foreach(j=seq_len(num_split), .export=c('impuFun', 'divideSet','badSplit', 'giniIndex', 'leafNode')) %dopar% {
-        count <- count + 1
-        ## Setting for optim    
-        res <- optim(cutoffs[round(length(cutoffs) / j)], impuFun,
-                     label = label, i = i, dt = dt,
-                     col_name = col_name, method = "BFGS")
-        
-        ## Setting for nlm    
-        # res <- nlm(impuFun, cutoffs[round(length(cutoffs) / j)],
-        #     label = label, i = i, dt = dt, col_name = col_name)
-
-        #out <- rbind(out, c(res[[1]], res[[2]], i, j))
-        out[count, ] <- c(res[[1]], res[[2]], i, j)
-        cat(res[[1]], res[[2]], i, j, "\n")
-      }
+      out <- rbind(out, foreach(j=seq_len(num_split), .combine = "rbind",
+                                .export=c('impuFun', 'divideSet','badSplit', 'giniIndex', 'leafNode')) %dopar% {
+         c(optim(cutoffs[round(length(cutoffs) / j)], impuFun,
+              label = label, i = i, dt = dt,
+              col_name = col_name, method = "BFGS"), i)
+      })
     }
+
+    #b <- Sys.time()
     
-    ## Setting for optim    
-    best_split <- which.min(out[, 2])[1]
-    best_cut <- out[best_split, 1]
-    best_col <- out[best_split, 3]
+    # out <- matrix(NA, nrow = length(col_name) * split_measure, ncol = 4)
+    # count <- 0
+    # c <- Sys.time()
+    # for (i in seq_along(col_name)) {
+    #   all_cut <- arrange_(dt, col_name[i]) %>% select_(., col_name[i]) %>% unique  ## get the value of i-th column
+    #   cutoffs <- (all_cut[-1,] + all_cut[-length(all_cut),]) / 2
+    # 
+    #   num_split <- ifelse(split_measure < length(cutoffs),
+    #                       split_measure, length(cutoffs))
+    #   for (j in seq_len(num_split)){
+    #     count <- count + 1
+    #     res <- optim(cutoffs[round(length(cutoffs) / j)], impuFun,
+    #                  label = label, i = i, dt = dt,
+    #                  col_name = col_name, method = "BFGS")
+    #     out[count, ] <- c(res[[1]], res[[2]], i, j)
+    # }}
+    # d <- Sys.time()
+
+    best_splitindex <- which.min(out[, 2])[1] %>% unlist
+    best_cut <- out[best_splitindex, 1] %>% unlist
+    best_col <- out[best_splitindex, 6] %>% unlist
+
+    
+    # Setting for optim
+    # best_splitindex <- which.min(out[, 2])[1]
+    # best_cut <- out[best_splitindex, 1]
+    # best_col <- out[best_splitindex, 3]
     
     ## Setting for nlm    
-    # best_split <- which.min(out[, 1])[1]
-    # best_cut <- out[best_split, 2]
-    # best_col <- out[best_split, 3]
+    # best_splitindex <- which.min(out[, 1])[1]
+    # best_cut <- out[best_splitindex, 2]
+    # best_col <- out[best_splitindex, 3]
     
         
     ### Step 2.
@@ -432,7 +445,7 @@ label <- "Species"
 # label <- "nativeSpeaker"
 
 #### Iris example, training
-x2 <- buildTree(dt, label, min_instance = 1, split_measure = 20, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
+x2 <- buildTree(dt, label, min_instance = 1, split_measure = 20, max_depth = 10, info_gain = 0.1, numOfFeatures=4)
 
 print_tree(x2) 
 accComp(dt, x2, label)
@@ -440,7 +453,7 @@ accComp(dt, x2, label)
 ###### time testing
 a <- Sys.time()
 x2 <- buildTree(dt, label, min_instance = 1,
-                split_measure = 20, max_depth = 10, info_gain = 0.001, numOfFeatures=4)
+                split_measure = 20, max_depth = 10, info_gain = 0.1, numOfFeatures=4)
 b <- Sys.time() - a
 b
 ######
