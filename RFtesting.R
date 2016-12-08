@@ -13,7 +13,7 @@ cl<-makeCluster(4)
 registerDoParallel(cl)
 clusterCall(cl, function() {library(lazyeval); library(dplyr); library(magrittr); library(foreach); library(doParallel); library(party)})
 
-setwd("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Parkinsons data\\5 tests")
+#setwd("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Parkinsons data\\5 tests")
 setwd("C:/Users/Tri/Documents/")
 
 ###################################################################
