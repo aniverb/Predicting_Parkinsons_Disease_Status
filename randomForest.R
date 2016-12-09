@@ -6,10 +6,6 @@ library(digest)
 library(lineprof)
 source("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Predicting_Parkinsons_Disease_Status\\RFtesting.R")
 
-cl<-makeCluster(3)
-registerDoParallel(cl)
-clusterCall(cl, function() {library(lazyeval); library(dplyr); library(magrittr); library(foreach); library(doParallel); library(party)})
-
 setwd("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Parkinsons data\\5 tests")
 #setwd("C:/Users/Tri/Documents/")
 
