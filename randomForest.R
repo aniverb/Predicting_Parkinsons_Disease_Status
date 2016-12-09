@@ -4,6 +4,7 @@ library(stringi)
 library(digest)
 #devtools::install_github("hadley/lineprof")
 library(lineprof)
+
 source("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Predicting_Parkinsons_Disease_Status\\RFtesting.R")
 
 setwd("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Parkinsons data\\5 tests")
@@ -11,22 +12,20 @@ setwd("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Parkinsons
 
 ## classic iris example
 data(iris)
-dt <- iris
-label <- "Species"
 
 #### another example data
 # dt <- readingSkills[c(1:105),]
 # label <- "nativeSpeaker"
 
 #### Iris example, training
-x2 <- buildTree(dt, label, min_instance = 1, split_measure = 20, max_depth = 10, info_gain = 0.1, numOfFeatures=4)
+x2 <- buildTree(iris, "Species", min_instance = 1, split_measure = 20, max_depth = 10, info_gain = 0.1, numOfFeatures=4)
 
 print_tree(x2) 
 accComp(dt, x2, label)
 
 ###### time testing
 a <- Sys.time()
-x2 <- buildTree(dt, label, min_instance = 1,
+x2 <- buildTree(iris, "Species", min_instance = 1,
                 split_measure = 20, max_depth = 10, info_gain = 0.1, numOfFeatures=4)
 b <- Sys.time() - a
 b
@@ -41,9 +40,9 @@ for (i in 1:nrow(iris)) {
 }
 
 set.seed(12-4-16)
-forest=buildForest(4, iris, "Species", numOfFeatures=4)
-fp=forestPredict(iris, forest)
-accuracy(iris, "Species", fp)
+forest_iris=buildForest(4, iris, "Species", numOfFeatures=4)
+fp_iris=forestPredict(iris, forest_iris)
+accuracy(iris, "Species", fp_iris)
 
 #### project data
 dt=read.csv("roch_all_data.csv")

@@ -496,14 +496,16 @@ forestPredict=function(dt, forest){
   numtrees=length(forest)
   n=nrow(dt)
   predictionsMat=matrix(nrow=n, ncol=numtrees)
-  id=0
+  id=1
   for (tree in forest){
     predictions=c()
+    cat("tree #:", id, "\n")
     for (i in 1:n) {
-      predictions[i]=prediction(dt[i,], tree)
+      #cat("obs #:", i, "\n") #4019 
+      predictions[i]=prediction(dt[i,], tree) 
     }
-    id=id+1
     predictionsMat[,id]= predictions
+    id=id+1
   }
   maxVotes=apply(predictionsMat, 1, countVote)
   return(maxVotes)
