@@ -177,6 +177,8 @@ buildTree <- function(dt, label, min_instance = 1,
   col_name <- colnames(dt)
   col_name <- col_name[-which(col_name == label)]
   col_name <- sample(col_name, numOfFeatures)
+
+  
   
   cat("depth is:", n_now, "\n")
   
@@ -197,7 +199,7 @@ buildTree <- function(dt, label, min_instance = 1,
 
     for (i in seq_along(col_name)) {
       all_cut <- arrange_(dt, col_name[i]) %>% select_(., col_name[i]) %>% unique  ## get the value of i-th column
-      cutoffs <- (all_cut[-1,] + all_cut[-length(all_cut),]) / 2
+      cutoffs <- (all_cut[-1,] + all_cut[-nrow(all_cut),]) / 2
 
       num_split <- ifelse(split_measure < length(cutoffs),
                           split_measure, length(cutoffs))

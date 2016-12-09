@@ -177,7 +177,7 @@ leafNode <- function(dt, label) {
 ## output: gini impurity
 ###################################################################
 
-giniImpu <- function(subdt, x, tt = nrow(subdt)) {
+giniImpu <- function(x, subdt, tt = nrow(subdt)) {
   a1 <- subdt[(subdt[, 1] > x), 2] 
   a2 <- subdt[(subdt[, 1] <= x), 2] 
   len_a1 <- length(a1)
@@ -226,26 +226,31 @@ buildTree <- function(dt, label, min_instance = 1,
       select_(., col_name[best_col]) %>%
       unique  ## get the value of i-th column
     
-    cutoffs <- (all_cut[-1,] + all_cut[-length(all_cut),]) / 2
+    cutoffs <- (all_cut[-1,] + all_cut[-nrow(all_cut),]) / 2
     
     subdt <- st[, c(best_col, ncol(st))]
 
+    ## Method. 1
+    
     #a <- Sys.time()
     out <- sapply(seq_along(cutoffs), function(zz) {
-      giniImpu(subdt, cutoffs[zz])
+      giniImpu(cutoffs[zz], subdt)
     }) 
-    #b <- Sys.time()
-
-            # out <- foreach(j=seq_along(cutoffs),
-    #                .combine = "c",
-    #                .export=c('impuFun', 'divideSet','badSplit', 'giniIndex', 'leafNode')) %dopar% {
-    #         impuFun(cutoffs[j], dt = dt, col_name = col_name, i = best_col, label = label)}
-    # out <- sapply(seq_along(cutoffs),
-    #                function (x) {
-    #                  impuFun(cutoffs[x], dt = st,
-    #                          col_name = col_name, i = best_col, label = label)})
-
     best_cut <- cutoffs[which.min(out)]
+    #b <- Sys.time()
+    
+    ## Method. 2
+    # out <- foreach(j=sequ, .combine = "rbind",
+    #                .export=c('giniImpu')) %dopar% {
+    #                  optim(cutoffs[j], giniImpu, subdt = subdt)}
+    # best_cut <- out[which.min(out[,2]),1] %>% unlist
+
+    ## Method. 3
+    # out <- foreach(j=seq_along(cutoffs),
+    #                .combine = "c",
+    #                .export=c('giniImpu')) %dopar% {
+    #                  giniImpu(cutoffs[j], subdt)}
+    # best_cut <- cutoffs[which.min(out)]
     
     ### Step 2.
     ### Split the data
@@ -255,13 +260,20 @@ buildTree <- function(dt, label, min_instance = 1,
     ### Step 3.
     ### check the subset has enough information gain
     
-    
-    if (badSplit(divide[[1]], divide[[2]], dt, label) < info_gain) {
-      cat("Info gain is:", badSplit(divide[[1]], divide[[2]], dt, label),
-          "<", info_gain, "\n")
+    gini_gain <- badSplit(divide[[1]], divide[[2]], dt, label)
+
+    if (gini_gain < info_gain) {
+      cat("Info gain is:", gini_gain, "<", info_gain, "\n")
       cat("Bad Split", "\n")
       return(leafNode(dt, label))
     }
+    
+    # if (badSplit(divide[[1]], divide[[2]], dt, label) < info_gain) {
+    #   cat("Info gain is:", badSplit(divide[[1]], divide[[2]], dt, label),
+    #       "<", info_gain, "\n")
+    #   cat("Bad Split", "\n")
+    #   return(leafNode(dt, label))
+    # }
     
     res <- list(column = best_col, cutoff = best_cut,
                 L_tree = divide[[1]], R_tree = divide[[2]])
@@ -282,7 +294,8 @@ buildTree <- function(dt, label, min_instance = 1,
                  cutoff = best_cut,
                  depth = n_now,
                  left_tree = v1,
-                 right_tree = v2)
+                 right_tree = v2,
+                 info_gain = gini_gain / nrow(dt))
     
     return(tree)
   }
@@ -309,6 +322,60 @@ prediction <- function(instance, model) {
     }
   }
 }
+
+importance <- function(fit, out_name = NULL, out_weight = NULL) {
+  if (fit$column %in% out_name) {
+    index <- which(fit$column == out_name) 
+    out_weight[index] <- fit$info_gain + out_weight[index]
+  } else {
+    out_name <- c(out_name, fit$column) 
+    out_weight <- c(out_weight, fit$info_gain)
+  }
+  
+  if (is.list(fit$left_tree)) {
+    v1 <- importance(fit$left_tree, out_name = out_name,
+                     out_weight = out_weight)
+  } else {
+    v1 <- NULL
+  }
+  
+  if (is.list(fit$right_tree)) {
+    v2 <- importance(fit$right_tree, out_name = out_name,
+                    out_weight = out_weight)
+  } else {
+    v2 <- NULL
+  }
+  
+  out_name <- c(out_name, v1, v2)
+  out_weight <- c(out_weight, v1, v2)
+  
+  return(list(out_name, out_weight))
+}
+#importance(x2)
+
+importance <- function(fit, out = NULL) {
+  
+  out <- rbind(out, c(fit$column, fit$info_gain))
+
+  if (is.list(fit$left_tree)) {
+    v1 <- importance(fit$left_tree)
+  } else {
+    v1 <- NULL
+  }
+  
+  if (is.list(fit$right_tree)) {
+    v2 <- importance(fit$right_tree)
+  } else {
+    v2 <- NULL
+  }
+  
+  out <- rbind(out, v1, v2)
+  
+  return(out)
+}
+
+# x1 <- importance(x2)
+# x1[ x1[,1] == (x1[,1] %>% unique),2] %>% as.numeric() %>% sum
 
 
 ## Iris trained model display
