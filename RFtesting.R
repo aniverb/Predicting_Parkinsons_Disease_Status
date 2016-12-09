@@ -13,8 +13,9 @@ cl<-makeCluster(4)
 registerDoParallel(cl)
 clusterCall(cl, function() {library(lazyeval); library(dplyr); library(magrittr); library(foreach); library(doParallel); library(party)})
 
-#setwd("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Parkinsons data\\5 tests")
-setwd("C:/Users/Tri/Documents/")
+#should be removed. is this necessary?
+setwd("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Parkinsons data\\5 tests")
+#setwd("C:/Users/Tri/Documents/")
 
 ###################################################################
 ## Find inf pairs in the data
@@ -431,10 +432,18 @@ bootstrap=function(dt){
 }
 
 
+# buildForest=function(numOfTrees, dt, label, min_instance = 1, max_depth = 10, info_gain = 0.1, n_now = 1, split_measure = 15, numOfFeatures=NA){
+#   forest = foreach (i = 1:numOfTrees) %dopar% {
+#     cat(i, "\n")
+#     dt=bootstrap(dt)
+#     buildTree(dt, label, min_instance, max_depth, info_gain, n_now, split_measure, numOfFeatures)
+#   }
+#   return(forest)
+# }
+
 buildForest=function(numOfTrees, dt, label, min_instance = 1, max_depth = 10, info_gain = 0.1, n_now = 1, split_measure = 15, numOfFeatures=NA){
   forest=list()
   for (i in 1:numOfTrees){
-    cat(i, "\n")
     dt=bootstrap(dt)
     forest[[i]] = buildTree(dt, label, min_instance, max_depth, info_gain, n_now, split_measure, numOfFeatures)
   }
@@ -453,14 +462,31 @@ countVote=function(votes){
 }
 
 
+# forestPredict=function(dt, forest){
+#   numtrees=length(forest)
+#   n=nrow(dt)
+#   predictionsMat=matrix(nrow=n, ncol=numtrees)
+#   id=0
+#   foreach(tree=forest, .export=c('prediction'))%dopar%{
+#     predictions=c()
+#     foreach(i= 1:nrow(dt), .export=c('prediction'))%dopar% {
+#       predictions[i]=prediction(dt[i,], tree)
+#     }
+#     id=id+1
+#     predictionsMat[,id]= predictions
+#   }
+#   maxVotes=apply(predictionsMat, 1, countVote)
+#   return(maxVotes)
+# }
+
 forestPredict=function(dt, forest){
   numtrees=length(forest)
   n=nrow(dt)
   predictionsMat=matrix(nrow=n, ncol=numtrees)
   id=0
-  foreach(tree=forest, .export=c('prediction'))%dopar%{
+  for (tree in forest){
     predictions=c()
-    foreach(i= 1:nrow(dt), .export=c('prediction'))%dopar% {
+    for (i in 1:nrow(dt)) {
       predictions[i]=prediction(dt[i,], tree)
     }
     id=id+1
@@ -469,7 +495,6 @@ forestPredict=function(dt, forest){
   maxVotes=apply(predictionsMat, 1, countVote)
   return(maxVotes)
 }
-
 
 ###################################################################
 ## Compute accuracy for decision tree
