@@ -1,10 +1,4 @@
 rm(list=ls())
-library(lazyeval)
-library(dplyr)
-library(magrittr)
-library(foreach)
-library(doParallel)
-library(party)
 
 library(stringi)
 library(digest)
