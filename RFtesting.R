@@ -309,6 +309,10 @@ buildTree <- function(dt, label, min_instance = 1,
 ###################################################################
 
 prediction <- function(instance, model) {
+  if (is.character(model)) {
+    return(model %>% as.character)
+  } 
+  
   if (instance[model$column] < model$cutoff) {
     if (!is.list(model$left_tree)) {
       return(model$left_tree %>% as.character)
@@ -388,6 +392,10 @@ importance <- function(fit, out = NULL) {
 ###################################################################
 
 print_tree <- function(X, prefix = "", prefix_2 = " ") {
+  
+  cat("* indicates a leaf node", "\n")
+  cat("", "\n")
+  
   for (i in c(1, 4, 5)) {
     if (i == 1) {
       cat(prefix, paste(X[[3]], ")", sep = ""), X[[i]],
