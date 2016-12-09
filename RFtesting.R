@@ -393,8 +393,12 @@ importance <- function(fit, out = NULL) {
 
 print_tree <- function(X, prefix = "", prefix_2 = " ") {
   
-  cat("* indicates a leaf node", "\n")
-  cat("", "\n")
+  #cat("* indicates a leaf node", "\n")
+  #cat("", "\n")
+  if (is.character(X)) {
+    cat("root node", "\n")
+    return(cat(as.character(X), "*", "\n"))
+  }
   
   for (i in c(1, 4, 5)) {
     if (i == 1) {
