@@ -8,6 +8,8 @@ library(doParallel)
 library(party)
 library(FSelector)
 library(caret)
+library(compiler)
+enableJIT(3)
 
 cl<-makeCluster(4)
 registerDoParallel(cl)
