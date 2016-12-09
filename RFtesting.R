@@ -499,9 +499,9 @@ forestPredict=function(dt, forest){
   id=1
   for (tree in forest){
     predictions=c()
-    cat("tree #:", id, "\n")
+    cat("tree #:", id, "\n") #3 err
     for (i in 1:n) {
-      #cat("obs #:", i, "\n") #4019 
+      #cat("obs #:", i, "\n") #4019 err
       predictions[i]=prediction(dt[i,], tree) 
     }
     predictionsMat[,id]= predictions
