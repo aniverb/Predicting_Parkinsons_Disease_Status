@@ -62,10 +62,13 @@ label <- "Status"
 Rprof("build_tree_profile_jit")
 x3 <- buildTree(dt, label, min_instance = 1, max_depth = 5, info_gain = 0.001) 
 #Rprof(NULL)  #some code NOT to be profiled could be added below
+Rprof()
 summaryRprof("build_tree_profile_jit")
+print_tree(x3)
 
 Rprof("accComp_profile_jit")
 accComp(dt, x3, label)
+Rprof()
 summaryRprof("accComp_profile_jit")
 
 
@@ -73,10 +76,17 @@ l <- lineprof(buildTree(dt, label, min_instance = 1, max_depth = 5, info_gain = 
 l
 shine(l) 
 
+Rprof("buildForest_profile_jit")
 set.seed(12-4-16)
-forest2=buildForest(4, dt, label, info_gain = 0.001)
-fp=forestPredict(dt, forest2)
+forest=buildForest(4, dt, label, info_gain = 0.001)
+Rprof()
+summaryRprof("buildForest_profile_jit")
+
+Rprof("forestPredict_profile_jit")
+fp=forestPredict(dt, forest)
 accuracy(dt, label, fp)
+Rprof()
+summaryRprof("forestPredict_profile_jit")
 
 ### Paramemers setting
 
