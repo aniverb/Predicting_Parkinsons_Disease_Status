@@ -1,5 +1,9 @@
 rm(list=ls())
 
+library(compiler)
+compilePKGS(TRUE)
+setCompilerOptions(suppressAll = TRUE, optimize = 3)
+enableJIT(3)
 library(lazyeval)
 library(dplyr)
 library(magrittr)
@@ -8,16 +12,10 @@ library(doParallel)
 library(party)
 library(FSelector)
 library(caret)
-library(compiler)
-enableJIT(3)
 
-cl<-makeCluster(4)
-registerDoParallel(cl)
-clusterCall(cl, function() {library(lazyeval); library(dplyr); library(magrittr); library(foreach); library(doParallel); library(party)})
-
-#should be removed. is this necessary?
-setwd("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Parkinsons data\\5 tests")
-#setwd("C:/Users/Tri/Documents/")
+#cl<-makeCluster(4)
+# registerDoParallel(cl)
+# clusterCall(cl, function() {library(lazyeval); library(dplyr); library(magrittr); library(foreach); library(doParallel); library(party)})
 
 ###################################################################
 ## Find inf pairs in the data
