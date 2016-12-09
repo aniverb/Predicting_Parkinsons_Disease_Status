@@ -25,6 +25,7 @@ library(caret)
 
 rep_find <- function(dt) {
   out <- NULL
+  for (i in 1:(nrow(dt)-1)) {
     if (dt[i, 2] == dt[i+1, 2]) {
       if (dt[i, 2] == 1) {
         out <- c(out, i)
@@ -392,8 +393,12 @@ importance <- function(fit, out = NULL) {
 
 print_tree <- function(X, prefix = "", prefix_2 = " ") {
   
-  cat("* indicates a leaf node", "\n")
-  cat("", "\n")
+  #cat("* indicates a leaf node", "\n")
+  #cat("", "\n")
+  if (is.character(X)) {
+    cat("root node", "\n")
+    return(cat(as.character(X), "*", "\n"))
+  }
   
   for (i in c(1, 4, 5)) {
     if (i == 1) {
