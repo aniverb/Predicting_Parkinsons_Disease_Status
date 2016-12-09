@@ -25,6 +25,7 @@ library(caret)
 
 rep_find <- function(dt) {
   out <- NULL
+  for (i in 1:(nrow(dt)-1)) {
     if (dt[i, 2] == dt[i+1, 2]) {
       if (dt[i, 2] == 1) {
         out <- c(out, i)
@@ -494,7 +495,7 @@ forestPredict=function(dt, forest){
   id=0
   for (tree in forest){
     predictions=c()
-    for (i in 1:nrow(dt)) {
+    for (i in 1:n) {
       predictions[i]=prediction(dt[i,], tree)
     }
     id=id+1
