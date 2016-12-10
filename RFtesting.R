@@ -148,7 +148,7 @@ maxDepth <- function(nn, mdep) {
 
 #### stop criteria 3: too few instances for child node
 numEx <- function(dt, num) {
-  nrow(dt) < num
+  nrow(dt) <= num
 }
 
 #### stop criteria 4: split will not gain info
