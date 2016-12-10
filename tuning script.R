@@ -1,5 +1,6 @@
 #### project data
-source("C:/Users/Tri/Documents/GitHub/Predicting_Parkinsons_Disease_Status/RFtesting.R")
+#source("C:/Users/Tri/Documents/GitHub/Predicting_Parkinsons_Disease_Status/RFtesting.R")
+source("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Predicting_Parkinsons_Disease_Status\\RFtesting.R")
 dt <- read.csv("roch_all_data.csv")
 
 ## Data cleaning
@@ -17,15 +18,28 @@ other <- seq(1, nrow(dt))[-train_index]
 test_index <- createDataPartition(1:length(other), 0.3)[[1]]
 dev_index <- seq(1, length(test_index))[-test_index]
 
-dt <- dt[train_index, ]
+train <- dt[train_index, ]
+dev <- dt[dev_index, ] #alternative to cv
+test <- dt[test_index, ]
 label <- "Status"
 
 #dt <- dt[train_index, c(1,seq(33, 186))]
-
+a <- Sys.time()
 set.seed(12-4-16)
-forest2=buildForest(5, dt, label, info_gain = 0.0001, numOfFeatures = 5)
-fp=forestPredict(dt, forest2)
-accuracy(dt, label, fp)
+tuneForest=buildForest(10, train, label, info_gain = 0.001, numOfFeatures = 5)#19 feat rule of thumb
+#Tree 11
+# Error in .jcall("weka/filters/Filter", "Lweka/core/Instances;", "useFilter",  : 
+#   java.lang.IllegalArgumentException: A nominal attribute (x_mean.Gait) cannot have duplicate labels ('(-0--0]').
+b <- Sys.time()
+tuneFp=forestPredict(dev, tuneForest)
+c <- Sys.time()
+tuneAcc=accuracy(dev, label, tuneFp)
+bf_time=b-a# 6.924353
+fp_time=c-b
+# tree #: 2 
+# obs #: 1 
+# Error in matrix(unlist(value, recursive = FALSE, use.names = FALSE), nrow = nr,  : 
+#                   length of 'dimnames' [2] not equal to array extent
 
 ##################################
 
