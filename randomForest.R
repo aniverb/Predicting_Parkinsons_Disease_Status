@@ -1,5 +1,3 @@
-rm(list=ls())
-
 library(stringi)
 library(digest)
 #devtools::install_github("hadley/lineprof")
@@ -10,14 +8,12 @@ source("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Predictin
 setwd("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Parkinsons data\\5 tests")
 #setwd("C:/Users/Tri/Documents/")
 
-## classic iris example
-data(iris)
-
 #### another example data
 # dt <- readingSkills[c(1:105),]
 # label <- "nativeSpeaker"
 
-#### Iris example, training
+## classic iris example
+data(iris)
 x2 <- buildTree(iris, "Species", min_instance = 1, split_measure = 20, max_depth = 10, info_gain = 0.1, numOfFeatures=4)
 
 print_tree(x2) 
@@ -83,17 +79,13 @@ summaryRprof("buildForest_profile_jit")
 
 Rprof("forestPredict_profile_jit")
 fp=forestPredict(dt, forest)
-#Error in matrix(unlist(value, recursive = FALSE, use.names = FALSE), nrow = nr,  : 
-#length of 'dimnames' [2] not equal to array extent
-#err @ tree 3
-#err @ obs 4019
 accuracy(dt, label, fp)
 Rprof()
 summaryRprof("forestPredict_profile_jit")
 
 ##debug
 prediction(dt[4018,], forest[[3]]) #ok
-prediction(dt[4019,], forest[[3]]) #throws error
+prediction(dt[4019,], forest[[3]]) #threw error before fix
 
 ### Paramemers setting
 

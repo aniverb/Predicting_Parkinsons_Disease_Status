@@ -461,7 +461,7 @@ bootstrap=function(dt){
 buildForest=function(numOfTrees, dt, label, min_instance = 1, max_depth = 10, info_gain = 0.1, n_now = 1, split_measure = 15, numOfFeatures=NA){
   forest=list()
   for (i in 1:numOfTrees){
-    cat(i, "\n")
+    cat("Tree #:", i, "\n")
     dt=bootstrap(dt)
     forest[[i]] = buildTree(dt, label, min_instance, max_depth, info_gain, n_now, split_measure, numOfFeatures)
   }
