@@ -229,6 +229,11 @@ buildTree <- function(dt, label, min_instance = 1,
     
     cutoffs <- (all_cut[-1,] + all_cut[-nrow(all_cut),]) / 2
     
+    if (length(cutoffs) == 1) {
+      cat("Same value", "\n")
+      return(leafNode(dt, label))
+    }
+    
     subdt <- st[, c(best_col, ncol(st))]
 
     ## Method. 1
