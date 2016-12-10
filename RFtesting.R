@@ -229,9 +229,11 @@ buildTree <- function(dt, label, min_instance = 1,
     
     cutoffs <- (all_cut[-1,] + all_cut[-nrow(all_cut),]) / 2
     
-    if (length(cutoffs) == 1) {
+    cat("num cutoff", length(cutoffs), "\n")
+    
+    if (length(cutoffs) <= 2) {
       cat("Same value", "\n")
-      return(leafNode(dt, label))
+      return(leafNode(st, label))
     }
     
     subdt <- st[, c(best_col, ncol(st))]
@@ -244,7 +246,7 @@ buildTree <- function(dt, label, min_instance = 1,
     }) 
     best_cut <- cutoffs[which.min(out)]
     #b <- Sys.time()
-    
+
     ## Method. 2
     # out <- foreach(j=sequ, .combine = "rbind",
     #                .export=c('giniImpu')) %dopar% {
