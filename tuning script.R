@@ -102,14 +102,14 @@ compImpo(tuneForest)[1:10,]
 
 #tuning with package
 a <- Sys.time()
-packageForest=randomForest(Status~., train, type=classification, replace=TRUE, mtry=8, ntree=500, importance=TRUE) #no depth/maxnodes
+packageForest=randomForest(factor(Status)~., train, replace=TRUE, ntree=500, importance=TRUE) #no depth/maxnodes
 b <- Sys.time()
 summary(packageForest)
 packagePredict=predict(packageForest, dev)
 c <- Sys.time()
 bf_time=b-a# 6.924353
 fp_time=c-b
-
+accuracy(dev, label, packagePredict)#0.8127464
 
 
 
