@@ -1,5 +1,5 @@
 rm(list=ls())
-
+library(plyr)
 library(compiler)
 compilePKGS(TRUE)
 setCompilerOptions(suppressAll = TRUE, optimize = 3)
@@ -335,40 +335,14 @@ prediction <- function(instance, model) {
   }
 }
 
-importance <- function(fit, out_name = NULL, out_weight = NULL) {
-  if (fit$column %in% out_name) {
-    index <- which(fit$column == out_name) 
-    out_weight[index] <- fit$info_gain + out_weight[index]
-  } else {
-    out_name <- c(out_name, fit$column) 
-    out_weight <- c(out_weight, fit$info_gain)
-  }
-  
-  if (is.list(fit$left_tree)) {
-    v1 <- importance(fit$left_tree, out_name = out_name,
-                     out_weight = out_weight)
-  } else {
-    v1 <- NULL
-  }
-  
-  if (is.list(fit$right_tree)) {
-    v2 <- importance(fit$right_tree, out_name = out_name,
-                    out_weight = out_weight)
-  } else {
-    v2 <- NULL
-  }
-  
-  out_name <- c(out_name, v1, v2)
-  out_weight <- c(out_weight, v1, v2)
-  
-  return(list(out_name, out_weight))
-}
-#importance(x2)
+###################################################################
+## Compute importance of variables in a trained decision tree
+## input: a trained tree/model
+## output: importnace of each variable (not pretty)
+###################################################################
 
 importance <- function(fit, out = NULL) {
-  
   out <- rbind(out, c(fit$column, fit$info_gain))
-
   if (is.list(fit$left_tree)) {
     v1 <- importance(fit$left_tree)
   } else {
@@ -382,12 +356,28 @@ importance <- function(fit, out = NULL) {
   }
   
   out <- rbind(out, v1, v2)
-  
   return(out)
 }
 
-# x1 <- importance(x2)
-# x1[ x1[,1] == (x1[,1] %>% unique),2] %>% as.numeric() %>% sum
+###################################################################
+## Compute importance of variables in a trained RF/tree
+## input: a trained model
+## output: importnace of each variable 
+###################################################################
+
+compImpo <- function(fit, res = NULL) {
+  for (i in fit %>% length %>% seq_len) {
+    if (!is.list(fit[[i]])) {
+      next
+    } else {
+      res <- rbind(res, importance(fit[[i]]))
+    }
+  }
+  res <- data.frame(name = res[, 1], weight = as.numeric(res[, 2]))
+  impor <- aggregate(res[,2], by = list(res[, 1]), FUN = sum)
+  return(arrange(impor, desc(x)))
+}
+
 
 
 ## Iris trained model display

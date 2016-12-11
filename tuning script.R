@@ -12,6 +12,11 @@ delete_index <- na_find(dt[3:(ncol(dt)-1)])
 if (length(delete_index) > 0) dt <- dt[-delete_index,]
 dt <- dt[-c(1,  ncol(dt))] ## Exclude file name and other useless information
 
+ddt <- apply(dt, 2, scale)
+ddt[, 1] <- dt[, 1]
+dt <- ddt
+dt <- as.data.frame(dt)
+
 set.seed(12-4-16)
 train_index <- createDataPartition(1:nrow(dt), 0.5)[[1]]
 other <- seq(1, nrow(dt))[-train_index]
@@ -26,10 +31,13 @@ label <- "Status"
 #dt <- dt[train_index, c(1,seq(33, 186))]
 a <- Sys.time()
 set.seed(12-4-16)
-tuneForest=buildForest(10, train, label, info_gain = 0.001, numOfFeatures = 5)#19 feat rule of thumb
+tuneForest=buildForest(11, train, label, info_gain = 0.001, numOfFeatures = 5)#19 feat rule of thumb
 #Tree 11
 # Error in .jcall("weka/filters/Filter", "Lweka/core/Instances;", "useFilter",  : 
 #   java.lang.IllegalArgumentException: A nominal attribute (x_mean.Gait) cannot have duplicate labels ('(-0--0]').
+
+prediction(dev[1,], tuneForest[[2]])
+
 b <- Sys.time()
 tuneFp=forestPredict(dev, tuneForest)
 c <- Sys.time()
@@ -82,5 +90,10 @@ set.seed(12-4-16)
 forest=buildForest(4, iris, "Species", numOfFeatures=4)
 fp=forestPredict(iris, forest)
 accuracy(iris, "Species", fp)
+
+### calculate importance
+irisRF <- buildForest(10, iris, "Species", info_gain = 0.1,
+                      numOfFeatures = 4)
+compImpo(irisRF)
 
 
