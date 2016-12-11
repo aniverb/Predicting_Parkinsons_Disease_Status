@@ -109,7 +109,13 @@ packagePredict=predict(packageForest, dev)
 c <- Sys.time()
 bf_time=b-a# 6.924353
 fp_time=c-b
-accuracy(dev, label, packagePredict)#0.8127464
+accuracy(dev, label, packagePredict)# 0.8140604
 
-
-
+#most imp vars
+imp=packageForest$importance
+index=sort(imp[,'MeanDecreaseGini'], decreasing = T,index.return=T)
+index$x[1:10]
+'     amp_mean move_meanTKEO        stay_s            mi       stay_En     pitch_dfa 
+     17.06559      15.98908      15.96468      14.12819      13.47229      13.10186 
+     stay_iqr        stay_k      move_std    e_dfc.Gait 
+     12.68971      12.54182      12.50310      12.39555 '
