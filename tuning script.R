@@ -1,7 +1,7 @@
 #### project data
 #source("C:/Users/Tri/Documents/GitHub/Predicting_Parkinsons_Disease_Status/RFtesting.R")
 source("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Predicting_Parkinsons_Disease_Status\\RFtesting.R")
-
+setwd("C:/Users/Tri/Documents")
 library(randomForest)
 
 ## classic iris example
@@ -62,10 +62,11 @@ delete_index <- na_find(dt[3:(ncol(dt)-1)])
 if (length(delete_index) > 0) dt <- dt[-delete_index,]
 dt <- dt[-c(1,  ncol(dt))] ## Exclude file name and other useless information
 
-#ddt <- apply(dt, 2, scale)
-#ddt[, 1] <- dt[, 1]
-#dt <- ddt
-#dt <- as.data.frame(dt)
+ddt <- apply(dt, 2, scale)
+ddt <- apply(dt, 2, round, digits = 5)
+ddt[, 1] <- dt[, 1]
+dt <- ddt
+dt <- as.data.frame(dt)
 
 set.seed(12-4-16)
 train_index <- createDataPartition(1:nrow(dt), 0.5)[[1]]
@@ -81,7 +82,7 @@ label <- "Status"
 #dt <- dt[train_index, c(1,seq(33, 186))]
 a <- Sys.time()
 set.seed(12-4-16)
-tuneForest=buildForest(10, train, label, max_depth = 8, info_gain = 0.001)#19 feat rule of thumb, depth is another param to tune 15 too high, 5 too low
+tuneForest=buildForest(20, train, label, max_depth = 8, info_gain = 0.001)#19 feat rule of thumb, depth is another param to tune 15 too high, 5 too low
 #Tree 11
 # Error in .jcall("weka/filters/Filter", "Lweka/core/Instances;", "useFilter",  : 
 #   java.lang.IllegalArgumentException: A nominal attribute (x_mean.Gait) cannot have duplicate labels ('(-0--0]').
