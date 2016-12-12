@@ -110,10 +110,12 @@ compImpo(tuneForest)[1:10,]
 #CV/tuning with package
 a <- Sys.time()
 set.seed(12-4-16)
-rfCV=rfcv(dev[,2:ncol(dev)], factor(dev$Status), step=1, log=F, cv.fold=10, ntree=500)
+rfCV=rfcv(dev[,2:ncol(dev)], factor(dev$Status), step=.6, cv.fold=10, ntree=500)
 b <- Sys.time()
 1-min(rfCV$error.cv)
-which(rfCV$error.cv==min(rfCV$error.cv))
+which(rfCV$error.cv==min(rfCV$error.cv))#0.6063218
+
+set.seed(12-4-16)
 packageForest=randomForest(factor(Status)~., train, replace=TRUE, ntree=500, importance=TRUE) #no depth/maxnodes
 b <- Sys.time()
 summary(packageForest)
@@ -129,7 +131,7 @@ accuracy(test, label, packagePredictT)#.6040526
 imp=packageForest$importance
 index=sort(imp[,'MeanDecreaseGini'], decreasing = T,index.return=T)
 index$x[1:10]
-'     amp_mean move_meanTKEO        stay_s            mi       stay_En     pitch_dfa 
-     17.06559      15.98908      15.96468      14.12819      13.47229      13.10186 
-     stay_iqr        stay_k      move_std    e_dfc.Gait 
-     12.68971      12.54182      12.50310      12.39555 '
+'amp_mean move_meanTKEO        stay_s            mi       stay_En    e_dfc.Gait     pitch_dfa 
+18.09748      15.64479      15.63928      14.26490      13.36729      13.23928      13.17342 
+y_dfc.Gait         pitch      move_std 
+13.16617      12.97735      12.94504'

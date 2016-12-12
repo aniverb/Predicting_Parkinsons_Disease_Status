@@ -1,47 +1,13 @@
-library(stringi)
-library(digest)
-#devtools::install_github("hadley/lineprof")
-library(lineprof)
-
 source("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Predicting_Parkinsons_Disease_Status\\RFtesting.R")
-
+detach("package:ROCR", unload=TRUE)
+library(ROCR)
 setwd("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Parkinsons data\\5 tests")
 #setwd("C:/Users/Tri/Documents/")
 
-#### another example data
-# dt <- readingSkills[c(1:105),]
-# label <- "nativeSpeaker"
-
-## classic iris example
-data(iris)
-x2 <- buildTree(iris, "Species", min_instance = 1, split_measure = 20, max_depth = 10, info_gain = 0.1, numOfFeatures=4)
-
-print_tree(x2) 
-accComp(dt, x2, label)
-
-###### time testing
-a <- Sys.time()
-x2 <- buildTree(iris, "Species", min_instance = 1,
-                split_measure = 20, max_depth = 10, info_gain = 0.1, numOfFeatures=4)
-b <- Sys.time() - a
-b
-######
-
-### Single prediction
-cat(prediction(iris[1,], x2), (iris[1, ]$Species) %>% as.character, "\n")
-
-### Display all iris example predictions
-for (i in 1:nrow(iris)) {
-  cat(prediction(iris[i,], x2), (iris[i, ]$Species) %>% as.character, "\n")
-}
-
-set.seed(12-4-16)
-forest_iris=buildForest(4, iris, "Species", numOfFeatures=4)
-fp_iris=forestPredict(iris, forest_iris)
-accuracy(iris, "Species", fp_iris)
-
-#### project data
-dt=read.csv("roch_all_data.csv")
+##################################
+#our data
+##################################
+dt <- read.csv("roch_all_data.csv")
 
 ## Data cleaning
 delete_index <- rep_find(dt)
@@ -52,47 +18,58 @@ delete_index <- na_find(dt[3:(ncol(dt)-1)])
 if (length(delete_index) > 0) dt <- dt[-delete_index,]
 dt <- dt[-c(1,  ncol(dt))] ## Exclude file name and other useless information
 
-label <- "Status"
+#to avoid java related rounding errors
+ddt <- apply(dt, 2, scale)
+ddt <- apply(dt, 2, round, digits = 5)
+ddt[, 1] <- dt[, 1]
+dt <- ddt
+dt <- as.data.frame(dt)
 
-Rprof("build_tree_profile_jit")
-x3 <- buildTree(dt, label, min_instance = 1, max_depth = 5, info_gain = 0.001) 
-#Rprof(NULL)  #some code NOT to be profiled could be added below
-Rprof()
-summaryRprof("build_tree_profile_jit")
-print_tree(x3)
-
-Rprof("accComp_profile_jit")
-accComp(dt, x3, label)
-Rprof()
-summaryRprof("accComp_profile_jit")
-
-
-l <- lineprof(buildTree(dt, label, min_instance = 1, max_depth = 5, info_gain = 0.001))
-l
-shine(l) 
-
-Rprof("buildForest_profile_jit")
+#spliting data into train, dev, and test sets
 set.seed(12-4-16)
-forest=buildForest(4, dt, label, info_gain = 0.001)
-Rprof()
-summaryRprof("buildForest_profile_jit")
+train_index <- createDataPartition(1:nrow(dt), 0.5)[[1]]
+other <- seq(1, nrow(dt))[-train_index]
+test_index <- sample(other, length(other) * 0.6)
+dev_index <- other[(other %in% test_index) == FALSE]
+#test_index <- createDataPartition(1:length(other), 0.3)[[1]]
+#dev_index <- seq(1, length(test_index))[-test_index]
 
-Rprof("forestPredict_profile_jit")
-fp=forestPredict(dt, forest)
-accuracy(dt, label, fp)
-Rprof()
-summaryRprof("forestPredict_profile_jit")
-
-##debug
-prediction(dt[4018,], forest[[3]]) #ok
-prediction(dt[4019,], forest[[3]]) #threw error before fix
-
-### Paramemers setting
-
+train <- dt[train_index, ]
+dev <- dt[dev_index, ] #alternative to cross valid
+test <- dt[test_index, ]
 label <- "Status"
-split_measure <- 15  ## how many cutoffs points are used in optimization
-max_depth <- 5
-min_instance <- 1
-info_gain <- 0.001
 
-#buildTree(dt, label, min_instance = 1, max_depth = 10, info_gain = 0.001)
+a <- Sys.time()
+set.seed(12-4-16)
+packageForest=randomForest(factor(Status)~., train, replace=TRUE, ntree=500, importance=TRUE) #no depth/maxnodes
+b <- Sys.time()
+summary(packageForest)
+packagePredict=predict(packageForest, dev)
+c <- Sys.time()
+bf_time=b-a# 6.924353
+fp_time=c-b
+accuracy(dev, label, packagePredict)# 0.614532
+packagePredictT=predict(packageForest, test)
+packagePredictTP=predict(packageForest, test, type = 'prob')
+accuracy(test, label, packagePredictT)#.6040526
+
+#most imp vars
+imp=packageForest$importance
+index=sort(imp[,'MeanDecreaseGini'], decreasing = T)
+index[1:10]
+'amp_mean move_meanTKEO        stay_s            mi       stay_En    e_dfc.Gait     pitch_dfa 
+18.09748      15.64479      15.63928      14.26490      13.36729      13.23928      13.17342 
+y_dfc.Gait         pitch      move_std 
+13.16617      12.97735      12.94504'
+
+testlabBin=as.numeric(test[,1]==2)
+pr <- prediction(as.numeric(packagePredictTP), testlabBin)
+prf <- performance(pr, measure = "tpr", x.measure = "fpr")
+
+save(test)
+save(packagePredictTP)
+save(testlabBin)
+plot(prf) #plotting ROC (bullet 2)
+abline(0, 1, col="red")
+auc_prf1=performance(prA, measure = "auc")
+AUC1=auc_prf1@y.values[[1]] 

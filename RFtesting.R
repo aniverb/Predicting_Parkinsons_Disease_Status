@@ -1,9 +1,9 @@
 rm(list=ls())
-library(plyr)
 library(compiler)
 compilePKGS(TRUE)
 setCompilerOptions(suppressAll = TRUE, optimize = 3)
-enableJIT(3)
+enableJIT(3)#no packages loaded above this line besides compiler
+library(plyr)
 library(lazyeval)
 library(dplyr)
 library(magrittr)
