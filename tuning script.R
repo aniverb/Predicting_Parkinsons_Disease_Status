@@ -115,23 +115,3 @@ b <- Sys.time()
 1-min(rfCV$error.cv)
 which(rfCV$error.cv==min(rfCV$error.cv))#0.6063218
 
-set.seed(12-4-16)
-packageForest=randomForest(factor(Status)~., train, replace=TRUE, ntree=500, importance=TRUE) #no depth/maxnodes
-b <- Sys.time()
-summary(packageForest)
-packagePredict=predict(packageForest, dev)
-c <- Sys.time()
-bf_time=b-a# 6.924353
-fp_time=c-b
-accuracy(dev, label, packagePredict)# 0.614532
-packagePredictT=predict(packageForest, test)
-accuracy(test, label, packagePredictT)#.6040526
-
-#most imp vars
-imp=packageForest$importance
-index=sort(imp[,'MeanDecreaseGini'], decreasing = T,index.return=T)
-index$x[1:10]
-'amp_mean move_meanTKEO        stay_s            mi       stay_En    e_dfc.Gait     pitch_dfa 
-18.09748      15.64479      15.63928      14.26490      13.36729      13.23928      13.17342 
-y_dfc.Gait         pitch      move_std 
-13.16617      12.97735      12.94504'

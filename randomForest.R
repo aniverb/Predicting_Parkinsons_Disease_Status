@@ -1,6 +1,8 @@
 source("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Predicting_Parkinsons_Disease_Status\\RFtesting.R")
-detach("package:ROCR", unload=TRUE)
-library(ROCR)
+
+library(pROC)
+library(randomForest)
+
 setwd("C:\\Users\\aniverb\\Documents\\Grad_School\\JHU\\475\\project\\Parkinsons data\\5 tests")
 #setwd("C:/Users/Tri/Documents/")
 
@@ -50,7 +52,7 @@ bf_time=b-a# 6.924353
 fp_time=c-b
 accuracy(dev, label, packagePredict)# 0.614532
 packagePredictT=predict(packageForest, test)
-packagePredictTP=predict(packageForest, test, type = 'prob')
+#packagePredictTP=predict(packageForest, test, type = 'prob')
 accuracy(test, label, packagePredictT)#.6040526
 
 #most imp vars
@@ -62,14 +64,8 @@ index[1:10]
 y_dfc.Gait         pitch      move_std 
 13.16617      12.97735      12.94504'
 
-testlabBin=as.numeric(test[,1]==2)
-pr <- prediction(as.numeric(packagePredictTP), testlabBin)
-prf <- performance(pr, measure = "tpr", x.measure = "fpr")
+#testlabBin=as.numeric(test[,1]==2)
+#packagePredictTBin=as.numeric(packagePredictT==2)
+#save(test, testlabBin, packagePredictT, packagePredictTP, file="ROCRobjects")
 
-save(test)
-save(packagePredictTP)
-save(testlabBin)
-plot(prf) #plotting ROC (bullet 2)
-abline(0, 1, col="red")
-auc_prf1=performance(prA, measure = "auc")
-AUC1=auc_prf1@y.values[[1]] 
+plot(roc(test$Status, as.numeric(packagePredictT)), col="red", main="ROC for Test Data")
