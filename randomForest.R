@@ -68,4 +68,4 @@ y_dfc.Gait         pitch      move_std
 #packagePredictTBin=as.numeric(packagePredictT==2)
 #save(test, testlabBin, packagePredictT, packagePredictTP, file="ROCRobjects")
 
-plot(roc(test$Status, as.numeric(packagePredictT)), col="red", main="ROC for Test Data")
+plot(roc(test$Status, as.numeric(packagePredictT)), col="red", main="ROC Using Package on Test Data")
