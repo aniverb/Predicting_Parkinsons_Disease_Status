@@ -70,6 +70,34 @@ ddt <- apply(dt, 2, round, digits = 5)
 ddt[, 1] <- dt[, 1]
 dt <- ddt
 dt <- as.data.frame(dt)
+label <- "Status"
+
+#testing speed
+Rprof("build_tree_profile_jit")
+x3 <- buildTree(dt, label, min_instance = 1, max_depth = 5, info_gain = 0.001) 
+#Rprof(NULL)  #some code NOT to be profiled could be added below
+Rprof()
+summaryRprof("build_tree_profile_jit")
+print_tree(x3)
+
+prof("accComp_profile_jit")
+accComp(dt, x3, label)
+Rprof()
+summaryRprof("accComp_profile_jit")
+
+Rprof("buildForest_profile_jit")
+#spliting data into train, dev, and test sets
+set.seed(12-4-16)
+forest=buildForest(4, dt, label, info_gain = 0.001)
+Rprof()
+summaryRprof("buildForest_profile_jit")
+
+Rprof("forestPredict_profile_jit")
+fp=forestPredict(dt, forest)
+accuracy(dt, label, fp)
+Rprof()
+summaryRprof("forestPredict_profile_jit")
+
 
 #spliting data into train, dev, and test sets
 set.seed(12-4-16)
@@ -77,21 +105,16 @@ train_index <- createDataPartition(1:nrow(dt), 0.5)[[1]]
 other <- seq(1, nrow(dt))[-train_index]
 test_index <- sample(other, length(other) * 0.6)
 dev_index <- other[(other %in% test_index) == FALSE]
-#test_index <- createDataPartition(1:length(other), 0.3)[[1]]
-#dev_index <- seq(1, length(test_index))[-test_index]
 
 train <- dt[train_index, ]
-dev <- dt[dev_index, ] #alternative to cross valid
+dev <- dt[dev_index, ] 
 test <- dt[test_index, ]
-label <- "Status"
 
 #dt <- dt[train_index, c(1,seq(33, 186))]
+
 a <- Sys.time()
 set.seed(12-4-16)
 tuneForest=buildForest(10, train, label, info_gain = 0.001)#19 feat rule of thumb, depth is another param to tune 15 too high, 5 too low
-#Tree 11
-# Error in .jcall("weka/filters/Filter", "Lweka/core/Instances;", "useFilter",  : 
-#   java.lang.IllegalArgumentException: A nominal attribute (x_mean.Gait) cannot have duplicate labels ('(-0--0]').
 
 #prediction(dev[1,], tuneForest[[2]])
 
@@ -101,13 +124,8 @@ c <- Sys.time()
 tuneAcc=accuracy(dev, label, tuneFp) # 0.5795007
 bf_time=b-a# 6.924353
 fp_time=c-b
-# tree #: 2 
-# obs #: 1 
-# Error in matrix(unlist(value, recursive = FALSE, use.names = FALSE), nrow = nr,  : 
-#                   length of 'dimnames' [2] not equal to array extent
 compImpo(tuneForest)[1:10,]
-
-#CV/tuning with package
+#CV/tuning 
 a <- Sys.time()
 set.seed(12-4-16)
 rfCV=rfcv(dev[,2:ncol(dev)], factor(dev$Status), step=.6, cv.fold=10, ntree=500)

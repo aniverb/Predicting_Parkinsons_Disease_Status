@@ -33,27 +33,33 @@ train_index <- createDataPartition(1:nrow(dt), 0.5)[[1]]
 other <- seq(1, nrow(dt))[-train_index]
 test_index <- sample(other, length(other) * 0.6)
 dev_index <- other[(other %in% test_index) == FALSE]
-#test_index <- createDataPartition(1:length(other), 0.3)[[1]]
-#dev_index <- seq(1, length(test_index))[-test_index]
 
 train <- dt[train_index, ]
-dev <- dt[dev_index, ] #alternative to cross valid
+dev <- dt[dev_index, ] 
 test <- dt[test_index, ]
 label <- "Status"
 
+#our implementation
 a <- Sys.time()
 set.seed(12-4-16)
-packageForest=randomForest(factor(Status)~., train, replace=TRUE, ntree=500, importance=TRUE) #no depth/maxnodes
+testForest=buildForest(500, train, label, info_gain = 0.0001)#19 feat rule of thumb
 b <- Sys.time()
+testFp=forestPredict(test, testForest)
+c <- Sys.time()
+acc=accuracy(test, label, testFp) 
+bf_time=b-a
+fp_time=c-b
+compImpo(testForest)[1:10,]
+
+#package
+set.seed(12-4-16)
+packageForest=randomForest(factor(Status)~., train, replace=TRUE, ntree=500, importance=TRUE) #no depth/maxnodes
 summary(packageForest)
 packagePredict=predict(packageForest, dev)
-c <- Sys.time()
-bf_time=b-a# 6.924353
-fp_time=c-b
-accuracy(dev, label, packagePredict)# 0.614532
+accuracy(dev, label, packagePredict)
 packagePredictT=predict(packageForest, test)
 #packagePredictTP=predict(packageForest, test, type = 'prob')
-accuracy(test, label, packagePredictT)#.6040526
+accuracy(test, label, packagePredictT)
 
 #most imp vars
 imp=packageForest$importance
@@ -69,3 +75,4 @@ y_dfc.Gait         pitch      move_std
 #save(test, testlabBin, packagePredictT, packagePredictTP, file="ROCRobjects")
 
 plot(roc(test$Status, as.numeric(packagePredictT)), col="red", main="ROC Using Package on Test Data")
+plot(roc(test$Status, as.numeric(testFp)), col="red", main="ROC of our implementation")
