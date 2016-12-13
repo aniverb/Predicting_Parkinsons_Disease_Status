@@ -114,8 +114,7 @@ test <- dt[test_index, ]
 
 a <- Sys.time()
 set.seed(12-4-16)
-tuneForest=buildForest(10, train, label, info_gain = 0.001)#19 feat rule of thumb, depth is another param to tune 15 too high, 5 too low
-
+tuneForest=buildForest(10, train, label, info_gain = 0.001)#19 feat rule of thumb
 #prediction(dev[1,], tuneForest[[2]])
 
 b <- Sys.time()
@@ -125,6 +124,7 @@ tuneAcc=accuracy(dev, label, tuneFp) # 0.5795007
 bf_time=b-a# 6.924353
 fp_time=c-b
 compImpo(tuneForest)[1:10,]
+
 #CV/tuning 
 a <- Sys.time()
 set.seed(12-4-16)
